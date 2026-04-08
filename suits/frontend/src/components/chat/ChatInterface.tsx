@@ -113,6 +113,11 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
     }
   }, [messages, isThinking, streamingId])
 
+  // Cleanup rAF on unmount
+  useEffect(() => {
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [])
+
   // Flush buffered tokens to state at ~60fps
   const flushTokens = useCallback(() => {
     const msgId = streamMsgIdRef.current
@@ -229,7 +234,7 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
         onError('Something went wrong. Please try again.')
       }
     },
-    [documentId, isBusy, flushTokens],
+    [documentId, isBusy, flushTokens, addChat, chatId],
   )
 
   const openFilePicker = () => fileInputRef.current?.click()

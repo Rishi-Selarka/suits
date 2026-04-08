@@ -586,32 +586,30 @@ async def document_chat_stream(
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
             if result:
-                retriever = request.app.state.retriever
-                context_clauses = retriever.retrieve(document_id, body.message, top_k=5)
+                # Build context from stored clauses
+                clauses_raw = storage.get_clauses(document_id)
+                if not clauses_raw:
+                    clauses_raw = [c.model_dump() for c in result.clauses]
 
-                context_block = "\n\n".join(
-                    f"[Clause {c['clause_id']} | Page {c['page_number']}]\n{c['text']}"
-                    for c in context_clauses
-                )
-                augmented_message = (
-                    f"RELEVANT CLAUSES:\n{context_block}\n\n"
-                    f"USER QUESTION:\n{body.message}"
-                )
-
-                source_clauses = [
-                    {"clause_id": c["clause_id"], "text": c["text"][:200], "page": c["page_number"]}
-                    for c in context_clauses
+                clause_texts = [
+                    f"[Clause {c.get('clause_id', '?')}: {c.get('title', '')}] {c.get('text', '')[:300]}"
+                    for c in clauses_raw[:15]
                 ]
+                context_text = "\n\n".join(clause_texts)
+                augmented_message = (
+                    f"Document clauses:\n{context_text}\n\n"
+                    f"User question: {body.message}"
+                )
 
-                from prompts.templates import RAG_CHAT_PROMPT
+                from prompts.templates import RAG_CHAT_SYSTEM_PROMPT
 
                 async for token in llm_client.call_stream(
                     config=chat_config,
-                    system_prompt=RAG_CHAT_PROMPT,
+                    system_prompt=RAG_CHAT_SYSTEM_PROMPT,
                     user_message=augmented_message,
                 ):
                     yield json.dumps({"type": "token", "content": token})
-                yield json.dumps({"type": "done", "source_clauses": source_clauses})
+                yield json.dumps({"type": "done", "source_clauses": []})
             else:
                 from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
 

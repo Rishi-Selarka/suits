@@ -39,7 +39,7 @@ export default function DownloadsPage({ result }: { result: AnalysisResult | nul
         >
           <div className="flex items-center gap-3 mb-1">
             <div className="w-9 h-9 rounded-xl bg-suits-500/10 flex items-center justify-center">
-              <Download className="w-4.5 h-4.5 text-suits-600" />
+              <Download className="w-[18px] h-[18px] text-suits-600" />
             </div>
             <h1 className="text-xl font-semibold text-surface-200">Downloads</h1>
           </div>

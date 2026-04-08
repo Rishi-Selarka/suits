@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Sidebar from './Sidebar'
 import ChatInterface from '@/components/chat/ChatInterface'
@@ -68,22 +68,25 @@ export default function AppLayout() {
     }
   }, [analysis, addDocument])
 
-  // Watch for analysis completion
   const currentResult = cachedResult || analysis.result
-  if (
-    activeView === 'pipeline' &&
-    (analysis.pipelineStatus === 'complete' || analysis.pipelineStatus === 'cached') &&
-    analysis.result
-  ) {
-    setCachedResult(analysis.result)
-    addDocument({
-      id: analysis.result.document_id,
-      filename: activeFilename,
-      uploadedAt: Date.now(),
-      analyzed: true,
-    })
-    setActiveView('results')
-  }
+
+  // Watch for analysis completion
+  useEffect(() => {
+    if (
+      activeView === 'pipeline' &&
+      (analysis.pipelineStatus === 'complete' || analysis.pipelineStatus === 'cached') &&
+      analysis.result
+    ) {
+      setCachedResult(analysis.result)
+      addDocument({
+        id: analysis.result.document_id,
+        filename: activeFilename,
+        uploadedAt: Date.now(),
+        analyzed: true,
+      })
+      setActiveView('results')
+    }
+  }, [activeView, analysis.pipelineStatus, analysis.result, activeFilename, addDocument])
 
   const handleNewChat = useCallback(() => {
     setActiveDocumentId(undefined)
@@ -136,7 +139,7 @@ export default function AppLayout() {
 
       <main className="flex-1 overflow-hidden">
         {activeView === 'chat' && (
-          <ChatInterface documentId={activeDocumentId} onFileSelect={handleFileSelect} />
+          <ChatInterface key={activeDocumentId ?? 'general'} documentId={activeDocumentId} onFileSelect={handleFileSelect} />
         )}
 
         {activeView === 'uploading' && (

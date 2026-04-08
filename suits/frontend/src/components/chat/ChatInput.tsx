@@ -55,7 +55,7 @@ export default function ChatInput({
               onClick={onUpload}
               className="p-1.5 rounded-lg text-surface-400 hover:text-surface-300 hover:bg-cream-100 transition-colors shrink-0 mb-0.5"
             >
-              <Paperclip className="w-4.5 h-4.5" />
+              <Paperclip className="w-[18px] h-[18px]" />
             </button>
           )}
 
