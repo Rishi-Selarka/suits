@@ -1,0 +1,72 @@
+SOFTWARE AS A SERVICE - TERMS OF SERVICE
+
+These Terms of Service ("Terms") govern your access to and use of the CloudDesk platform ("Service") provided by CloudDesk Technologies Pvt. Ltd. ("Company", "we", "us") to the subscribing entity ("Customer", "you").
+
+Last Updated: 1st January 2026
+
+1. ACCEPTANCE OF TERMS
+By clicking "I Agree", signing an Order Form, or accessing the Service, you agree to be bound by these Terms. If you disagree, do not use the Service.
+
+2. SUBSCRIPTION AND ACCESS
+2.1 The Company grants Customer a non-exclusive, non-transferable, revocable license to access the Service during the subscription term.
+2.2 Customer may not sublicense, resell, or allow third-party access to the Service without prior written consent.
+2.3 The Company may modify, suspend, or discontinue any feature of the Service at any time without notice or liability.
+
+3. FEES AND PAYMENT
+3.1 Fees are as specified in the Order Form and are due in advance.
+3.2 All fees are non-refundable, including unused subscription periods.
+3.3 The Company may increase fees upon 30 days' notice. Continued use after the notice period constitutes acceptance.
+3.4 Late payments attract interest at 24% per annum.
+3.5 Failure to pay within 15 days of due date entitles the Company to suspend access without notice.
+
+4. DATA AND PRIVACY
+4.1 The Customer owns all data uploaded to the Service ("Customer Data").
+4.2 The Company shall process Customer Data solely to provide the Service.
+4.3 The Company may use aggregated, anonymized Customer Data for product improvement, analytics, and benchmarking without restriction.
+4.4 The Company shall implement reasonable security measures but does not guarantee against data breaches.
+4.5 In case of a data breach, the Company's liability is limited to 1 month's subscription fee.
+
+5. INTELLECTUAL PROPERTY
+5.1 The Service and all underlying technology remain the exclusive property of the Company.
+5.2 Feedback, suggestions, or ideas submitted by Customer may be used by the Company without compensation or attribution.
+5.3 Customer grants the Company a license to use Customer's name and logo in marketing materials.
+
+6. UPTIME AND SLA
+6.1 The Company targets 99.5% monthly uptime ("SLA").
+6.2 Scheduled maintenance windows (up to 8 hours per month) are excluded from uptime calculations.
+6.3 Downtime credits are the Customer's sole remedy for SLA breaches — maximum credit is 10% of monthly fees.
+6.4 The Company is not liable for downtime caused by third-party services, internet outages, or Customer's own actions.
+
+7. CONFIDENTIALITY
+Both parties agree to maintain confidentiality of the other's proprietary information and not disclose it to third parties.
+
+8. LIMITATION OF LIABILITY
+8.1 The Company's total liability shall not exceed the fees paid in the 3 months preceding the claim.
+8.2 The Company shall not be liable for indirect, incidental, consequential, or punitive damages, including loss of profits or data.
+8.3 These limitations apply even if the Company has been advised of the possibility of such damages.
+
+9. INDEMNIFICATION
+Customer shall indemnify the Company against claims arising from Customer's use of the Service, violation of these Terms, or infringement of third-party rights.
+
+10. TERMINATION
+10.1 Either party may terminate with 30 days' written notice at end of a subscription term.
+10.2 The Company may terminate immediately for non-payment, breach, or if Customer becomes insolvent.
+10.3 Upon termination, Customer has 30 days to export its data. Thereafter, the Company may delete all Customer Data.
+
+11. DISPUTE RESOLUTION
+11.1 Disputes shall first be subject to good faith negotiation for 30 days.
+11.2 Unresolved disputes shall be settled by arbitration in Bengaluru under the Arbitration and Conciliation Act, 1996.
+11.3 The arbitration shall be conducted in English before a sole arbitrator mutually appointed.
+11.4 Class action waiver: Customer waives any right to participate in class action proceedings against the Company.
+
+12. GOVERNING LAW
+These Terms are governed by the laws of India, without regard to conflict of law principles.
+
+13. MODIFICATIONS
+The Company may update these Terms at any time. Notice will be provided via email or in-app notification. Continued use constitutes acceptance.
+
+14. ENTIRE AGREEMENT
+These Terms, along with the Order Form, constitute the entire agreement between the parties.
+
+CloudDesk Technologies Pvt. Ltd.
+support@clouddesk.in

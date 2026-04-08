@@ -1,0 +1,67 @@
+EMPLOYMENT AGREEMENT
+
+This Employment Agreement ("Agreement") is entered into as of 1st April 2026, between:
+
+EMPLOYER: TechNova Solutions Pvt. Ltd., a company incorporated under the Companies Act, 2013, having its registered office at 4th Floor, Prestige Tower, MG Road, Bengaluru – 560001 ("Company")
+
+EMPLOYEE: Mr. Arjun Mehta, residing at 12, Koramangala 4th Block, Bengaluru – 560034 ("Employee")
+
+1. POSITION AND DUTIES
+The Employee is hired as Senior Software Engineer. The Employee shall report to the Engineering Manager and perform all duties as assigned. The Company reserves the right to change the Employee's designation, duties, or reporting structure at its sole discretion without prior notice.
+
+2. COMMENCEMENT AND PROBATION
+Employment commences on 1st April 2026. The Employee shall be on probation for a period of 6 months, during which the Company may terminate employment without notice or reason.
+
+3. COMPENSATION
+3.1 The Employee shall be paid a gross salary of INR 18,00,000 per annum (CTC), subject to deductions as per applicable law.
+3.2 The salary shall be reviewed annually at the Company's sole discretion. No increment is guaranteed.
+3.3 Variable pay of up to 20% of CTC is subject to individual and company performance, assessed entirely by the Company.
+
+4. WORKING HOURS
+The Employee agrees to work a minimum of 9 hours per day, 6 days a week. Overtime shall not be compensated separately. The Employee waives any claim to overtime pay under applicable law.
+
+5. LEAVE POLICY
+5.1 Annual Leave: 12 days per calendar year (non-encashable if not utilized).
+5.2 Sick Leave: 6 days per calendar year.
+5.3 Maternity/Paternity Leave: As per applicable law.
+5.4 Unused leave lapses at year-end and cannot be carried forward.
+
+6. NON-COMPETE CLAUSE
+6.1 During employment and for a period of 24 months after termination, the Employee shall not, directly or indirectly, engage with, be employed by, or provide services to any competitor of the Company operating in India.
+6.2 Competitors include but are not limited to: Infosys, Wipro, TCS, HCL, Cognizant, and any company in the IT services sector.
+6.3 Breach of this clause entitles the Company to seek injunctive relief and damages of INR 25,00,000.
+
+7. INTELLECTUAL PROPERTY
+7.1 All inventions, software, designs, processes, and work product created by the Employee during employment, whether or not during working hours, shall be the exclusive property of the Company.
+7.2 The Employee irrevocably assigns all IP rights to the Company with no additional compensation.
+7.3 This clause survives termination of employment indefinitely.
+
+8. CONFIDENTIALITY
+8.1 The Employee shall not disclose any Confidential Information to any third party during or after employment.
+8.2 Confidential Information includes client data, source code, business strategies, pricing, and trade secrets.
+8.3 This obligation survives termination for a period of 5 years.
+
+9. TERMINATION
+9.1 The Company may terminate this Agreement with 30 days' notice or payment in lieu.
+9.2 The Employee must serve 90 days' notice to resign, or forfeit equivalent salary as liquidated damages.
+9.3 The Company reserves the right to terminate immediately for cause, including but not limited to: performance issues, misconduct, or breach of any clause herein, at the Company's sole determination.
+9.4 Upon termination, the Employee shall not be entitled to any ex-gratia, severance, or gratuity unless mandated by law.
+
+10. MOONLIGHTING
+The Employee shall not engage in any other employment, freelance work, or business activity without prior written consent of the Company. Violation will result in immediate termination without notice.
+
+11. SOCIAL MEDIA
+The Employee shall not post, share, or publish any content related to the Company, its clients, or its products on any social media platform without prior written approval.
+
+12. GOVERNING LAW AND DISPUTE RESOLUTION
+This Agreement is governed by the laws of India. Disputes shall be resolved by arbitration in Bengaluru under the Arbitration and Conciliation Act, 1996, before a sole arbitrator appointed by the Company.
+
+13. ENTIRE AGREEMENT
+This Agreement supersedes all prior discussions and constitutes the entire agreement between the parties.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
+
+For TechNova Solutions Pvt. Ltd.              Employee
+
+_______________________________              _______________________________
+Authorized Signatory                          Arjun Mehta

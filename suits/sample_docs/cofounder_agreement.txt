@@ -1,0 +1,71 @@
+CO-FOUNDER AGREEMENT
+
+This Co-Founder Agreement ("Agreement") is entered into on 1st March 2026 between:
+
+1. Mr. Aditya Raj, residing at 5, Indiranagar, Bengaluru – 560038 ("Co-Founder 1")
+2. Ms. Shruti Menon, residing at 22, Koramangala 7th Block, Bengaluru – 560095 ("Co-Founder 2")
+
+(Collectively "Co-Founders") in respect of the startup venture to be incorporated as Nexus AI Pvt. Ltd. ("Company").
+
+1. ROLES AND RESPONSIBILITIES
+1.1 Co-Founder 1 (Aditya Raj) — Chief Executive Officer (CEO)
+    - Overall business strategy, fundraising, investor relations, sales
+1.2 Co-Founder 2 (Shruti Menon) — Chief Technology Officer (CTO)
+    - Product development, engineering team, technical architecture
+1.3 Each Co-Founder shall devote 100% of their professional time to the Company.
+
+2. EQUITY SPLIT
+2.1 Initial equity allocation:
+    - Co-Founder 1: 55%
+    - Co-Founder 2: 45%
+2.2 All equity is subject to a 4-year vesting schedule with a 1-year cliff:
+    - 25% vests after 12 months of continuous service
+    - Remaining 75% vests monthly over the following 36 months (2.08% per month)
+2.3 Unvested equity is forfeited upon departure.
+
+3. VESTING ACCELERATION
+3.1 Single Trigger: In the event of acquisition of the Company, 50% of unvested equity accelerates for each Co-Founder.
+3.2 Double Trigger: If a Co-Founder is terminated without cause within 12 months of an acquisition, 100% of unvested equity accelerates.
+
+4. COMPENSATION
+4.1 No salary shall be drawn by the Co-Founders until the Company raises seed funding of at least INR 1 Crore.
+4.2 Post-funding, salaries shall be set by the Board of Directors.
+
+5. INTELLECTUAL PROPERTY ASSIGNMENT
+5.1 Each Co-Founder irrevocably assigns all IP created in connection with the Company's business to the Company, including prior work related to the venture as listed in Annexure A.
+5.2 This assignment applies to all inventions, code, designs, and trade secrets created during the term of this Agreement.
+
+6. DECISION MAKING
+6.1 Day-to-day operational decisions may be taken by respective Co-Founders within their domain.
+6.2 Strategic decisions (new hiring above INR 15 LPA, large expenditures, new business lines) require consent of both Co-Founders.
+6.3 Deadlock Resolution: Unresolved deadlocks after 15 days of good faith negotiation shall be referred to an agreed-upon neutral advisor.
+
+7. NON-COMPETE AND NON-SOLICITATION
+7.1 During the term of this Agreement and for 12 months post-departure, each Co-Founder shall not:
+    (a) Start or join any competing AI startup in India
+    (b) Solicit Company employees, clients, or investors
+7.2 This clause shall not apply if a Co-Founder is terminated without cause.
+
+8. CONFIDENTIALITY
+Each Co-Founder shall maintain strict confidentiality of Company information during and for 3 years after departure.
+
+9. DEPARTURE OF A CO-FOUNDER
+9.1 A Co-Founder may resign with 3 months' written notice.
+9.2 Upon departure, unvested shares are forfeited. Vested shares are retained subject to right of first refusal by the Company and remaining Co-Founder.
+9.3 Right of First Refusal: Before transferring any shares to a third party, the departing Co-Founder must first offer them to the Company at fair market value.
+
+10. DISPUTE RESOLUTION
+Disputes shall be resolved by mediation first, followed by arbitration in Bengaluru under the Arbitration and Conciliation Act, 1996.
+
+11. GOVERNING LAW
+This Agreement is governed by Indian law, including the Companies Act, 2013.
+
+12. ENTIRE AGREEMENT
+This Agreement, along with the Shareholders' Agreement to be executed upon incorporation, constitutes the full understanding between the Co-Founders.
+
+IN WITNESS WHEREOF, the Co-Founders have signed this Agreement on the date first written above.
+
+Co-Founder 1                                  Co-Founder 2
+
+_______________________________              _______________________________
+Aditya Raj                                    Shruti Menon

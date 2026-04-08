@@ -85,9 +85,7 @@ export default function Sidebar({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-suits-500 to-suits-700 flex items-center justify-center shrink-0">
-                <span className="text-white text-sm font-bold">S</span>
-              </div>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-suits-500 to-suits-700 shrink-0" />
               <span className="text-surface-900 font-semibold text-sm tracking-wide">
                 SUITS
               </span>

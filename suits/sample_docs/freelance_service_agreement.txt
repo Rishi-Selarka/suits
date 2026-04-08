@@ -1,0 +1,66 @@
+FREELANCE SERVICE AGREEMENT
+
+This Service Agreement ("Agreement") is made on 1st February 2026 between:
+
+CLIENT: Orion Media Pvt. Ltd., 22nd Floor, One BKC, Bandra Kurla Complex, Mumbai – 400051 ("Client")
+FREELANCER: Ms. Priya Nair, 8B, Palm Grove Apartments, Khar West, Mumbai – 400052 ("Freelancer")
+
+1. SCOPE OF WORK
+The Freelancer agrees to provide the following services ("Services"):
+- UI/UX Design for the Client's mobile application (iOS and Android)
+- Delivery of wireframes, prototypes, and final design assets
+- Up to 3 rounds of revisions per screen
+- Handoff via Figma with developer-ready specifications
+
+Any work outside this scope shall require a separate written agreement and additional payment.
+
+2. PROJECT TIMELINE
+2.1 Project Start Date: 10th February 2026
+2.2 Final Delivery Date: 10th April 2026
+2.3 Intermediate milestones as agreed in Annexure A.
+2.4 Delays caused by Client's failure to provide timely feedback (beyond 5 business days) shall extend deadlines proportionally.
+
+3. PAYMENT TERMS
+3.1 Total Project Fee: INR 3,50,000 (Rupees Three Lakh Fifty Thousand only), exclusive of GST at 18%.
+3.2 Payment Schedule:
+    - 30% on signing (INR 1,05,000)
+    - 40% on delivery of wireframes (INR 1,40,000)
+    - 30% on final delivery (INR 1,05,000)
+3.3 Payments are due within 7 days of each milestone.
+3.4 Late payments shall attract interest at 2% per month from the due date.
+3.5 The Client shall not withhold payment citing subjective dissatisfaction if deliverables meet the agreed specifications.
+
+4. INTELLECTUAL PROPERTY
+4.1 All design assets, files, and deliverables remain the property of the Freelancer until full payment is received.
+4.2 Upon receipt of full payment, the Freelancer assigns all IP rights in the deliverables to the Client exclusively.
+4.3 The Freelancer retains the right to display the work in her portfolio unless the Client explicitly requests confidentiality in writing.
+
+5. REVISIONS AND CHANGE REQUESTS
+5.1 Up to 3 revision rounds per screen are included.
+5.2 Additional revisions beyond the included rounds shall be billed at INR 2,500 per hour.
+5.3 Major scope changes requested by the Client shall be quoted separately.
+
+6. CANCELLATION
+6.1 If the Client cancels the project after signing, all payments made to date are non-refundable.
+6.2 If the Freelancer cancels, she shall refund any advance payments for undelivered work within 14 days.
+6.3 Either party may terminate for cause with 14 days' written notice.
+
+7. CONFIDENTIALITY
+The Freelancer agrees to keep all Client business information, strategies, and data confidential during and for 2 years after the term of this Agreement.
+
+8. LIMITATION OF LIABILITY
+The Freelancer's liability under this Agreement shall not exceed the total fees paid. The Freelancer shall not be liable for any indirect, incidental, or consequential damages.
+
+9. INDEPENDENT CONTRACTOR
+The Freelancer is an independent contractor and not an employee, agent, or partner of the Client. The Freelancer is responsible for her own taxes and statutory obligations.
+
+10. GOVERNING LAW
+This Agreement is governed by the laws of India. Disputes shall be subject to the jurisdiction of courts in Mumbai.
+
+IN WITNESS WHEREOF, the parties have signed this Agreement as of the date first written above.
+
+For Orion Media Pvt. Ltd.                    Freelancer
+
+_______________________________              _______________________________
+Name:                                         Priya Nair
+Designation:                                  Date:

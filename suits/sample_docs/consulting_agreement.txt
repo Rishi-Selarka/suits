@@ -1,0 +1,71 @@
+MANAGEMENT CONSULTING AGREEMENT
+
+This Consulting Agreement ("Agreement") is entered into on 15th February 2026 between:
+
+CLIENT: Meridian Industries Ltd., Plot 12, Andheri East, Mumbai – 400093 ("Client")
+CONSULTANT: StratEdge Advisory LLP, 9th Floor, UB City, Bengaluru – 560001 ("Consultant")
+
+1. ENGAGEMENT SCOPE
+The Consultant is engaged to provide management consulting services as follows:
+- Organizational restructuring strategy for the Client's manufacturing division
+- Process efficiency audit across 3 plant locations
+- Implementation roadmap and change management support
+- Monthly progress reports and quarterly board presentations
+
+Detailed scope is set out in the Statement of Work ("SOW") attached as Annexure A.
+
+2. TERM
+This Agreement shall be effective from 1st March 2026 to 28th February 2027 (12 months), unless terminated earlier.
+
+3. FEES
+3.1 The Client shall pay a monthly retainer of INR 8,00,000.
+3.2 Travel, accommodation, and out-of-pocket expenses (with receipts) shall be reimbursed at cost, subject to a cap of INR 1,50,000 per month.
+3.3 Invoices shall be raised on the 1st of each month and are due within 15 days.
+3.4 Late payments attract interest at 18% per annum.
+3.5 Any additional work beyond the SOW shall be billed at INR 25,000 per consultant day.
+
+4. DELIVERABLES AND TIMELINES
+Deliverables and milestones are as specified in Annexure A. Delays caused by the Client's failure to provide timely access, data, or approvals shall not constitute a breach by the Consultant.
+
+5. ACCEPTANCE OF DELIVERABLES
+5.1 The Client shall review and accept or reject deliverables within 10 business days of receipt.
+5.2 Silence beyond 10 business days constitutes acceptance.
+5.3 Rejection must be in writing with specific, actionable feedback.
+5.4 The Consultant is entitled to two revision rounds per deliverable.
+
+6. CONFIDENTIALITY
+6.1 Both parties agree to keep confidential all proprietary information exchanged under this Agreement.
+6.2 The Consultant may reference the engagement in its portfolio, using only anonymized information, unless the Client consents to being named as a reference.
+6.3 This obligation survives termination for 3 years.
+
+7. INTELLECTUAL PROPERTY
+7.1 Deliverables created specifically for the Client become Client's property upon full payment.
+7.2 The Consultant retains ownership of all pre-existing methodologies, frameworks, tools, and templates.
+7.3 The Consultant grants the Client a non-exclusive, non-transferable license to use Consultant's methodologies embedded in deliverables for internal purposes only.
+
+8. NON-SOLICITATION
+During the term and for 18 months post-termination, the Client shall not directly solicit or hire any employee or associate of the Consultant. Violation shall attract liquidated damages of INR 50,00,000 per breach.
+
+9. LIMITATION OF LIABILITY
+9.1 The Consultant's total liability shall not exceed 3 months' retainer fees.
+9.2 The Consultant shall not be liable for indirect, incidental, or consequential losses.
+9.3 The Consultant's recommendations are advisory only; the Client bears full responsibility for implementation decisions.
+
+10. INDEMNIFICATION
+The Client shall indemnify the Consultant against claims arising from the Client's misuse of deliverables or false information provided to the Consultant.
+
+11. TERMINATION
+11.1 Either party may terminate with 60 days' written notice.
+11.2 The Client may terminate for material breach if the breach is not cured within 15 days of notice.
+11.3 The Consultant may terminate immediately for non-payment beyond 30 days.
+11.4 Upon termination, all fees for work completed are due within 30 days.
+
+12. GOVERNING LAW AND DISPUTE RESOLUTION
+This Agreement is governed by Indian law. Disputes shall first be mediated, then resolved by arbitration in Mumbai under the Arbitration and Conciliation Act, 1996.
+
+IN WITNESS WHEREOF, the parties have signed this Agreement on the date first written above.
+
+For Meridian Industries Ltd.                  For StratEdge Advisory LLP
+
+_______________________________              _______________________________
+Authorized Signatory                          Designated Partner
