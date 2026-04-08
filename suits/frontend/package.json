@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:all": "concurrently -n backend,frontend -c blue,green \"cd ../backend && ../venv/bin/uvicorn main:app --reload --port 8000\" \"vite\"",
+    "dev:all": "concurrently -n backend,frontend -c blue,green \"cd ../backend && ../venv/bin/uvicorn main:app --reload --port 8000 --http h11\" \"vite\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

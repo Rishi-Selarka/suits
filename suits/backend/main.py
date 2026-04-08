@@ -545,18 +545,18 @@ async def general_chat_stream(body: ChatRequest, request: Request) -> EventSourc
 
     chat_config = settings.agent_models.general_chat
 
-    async def event_generator() -> AsyncGenerator[dict, None]:
+    async def event_generator() -> AsyncGenerator[str, None]:
         try:
             async for token in llm_client.call_stream(
                 config=chat_config,
                 system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
                 user_message=body.message,
             ):
-                yield {"data": json.dumps({"type": "token", "content": token})}
-            yield {"data": json.dumps({"type": "done", "source_clauses": []})}
+                yield json.dumps({"type": "token", "content": token})
+            yield json.dumps({"type": "done", "source_clauses": []})
         except Exception as exc:
             logger.error(f"Stream chat failed: {exc}", extra={"status": "chat_error"})
-            yield {"data": json.dumps({"type": "error", "content": "Failed to generate response."})}
+            yield json.dumps({"type": "error", "content": "Failed to generate response."})
 
     return EventSourceResponse(event_generator())
 
@@ -582,7 +582,7 @@ async def document_chat_stream(
     result = storage.get_result(document_id)
     chat_config = settings.agent_models.rag_chat
 
-    async def event_generator() -> AsyncGenerator[dict, None]:
+    async def event_generator() -> AsyncGenerator[str, None]:
         try:
             if result:
                 retriever = request.app.state.retriever
@@ -609,8 +609,8 @@ async def document_chat_stream(
                     system_prompt=RAG_CHAT_PROMPT,
                     user_message=augmented_message,
                 ):
-                    yield {"data": json.dumps({"type": "token", "content": token})}
-                yield {"data": json.dumps({"type": "done", "source_clauses": source_clauses})}
+                    yield json.dumps({"type": "token", "content": token})
+                yield json.dumps({"type": "done", "source_clauses": source_clauses})
             else:
                 from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
 
@@ -619,11 +619,11 @@ async def document_chat_stream(
                     system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
                     user_message=body.message,
                 ):
-                    yield {"data": json.dumps({"type": "token", "content": token})}
-                yield {"data": json.dumps({"type": "done", "source_clauses": []})}
+                    yield json.dumps({"type": "token", "content": token})
+                yield json.dumps({"type": "done", "source_clauses": []})
         except Exception as exc:
             logger.error(f"Stream doc chat failed: {exc}", extra={"status": "chat_error"})
-            yield {"data": json.dumps({"type": "error", "content": "Failed to generate response."})}
+            yield json.dumps({"type": "error", "content": "Failed to generate response."})
 
     return EventSourceResponse(event_generator())
 
