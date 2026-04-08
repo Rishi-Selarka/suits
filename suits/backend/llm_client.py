@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 
 import openai
 
@@ -148,7 +148,7 @@ class LLMClient:
         config: ModelConfig,
         system_prompt: str,
         user_message: str,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncGenerator[str, None]:
         """Stream tokens from the LLM via OpenRouter."""
         model_id = config.model_id
 
