@@ -26,6 +26,7 @@ interface SidebarProps {
   onToggle: () => void
   onNewChat: () => void
   activeView: string
+  activeChatId: string
   onViewChange: (view: string) => void
   onChatSelect?: (chatId: string, documentId?: string) => void
 }
@@ -55,12 +56,14 @@ export default function Sidebar({
   onToggle,
   onNewChat,
   activeView,
+  activeChatId,
   onViewChange,
   onChatSelect,
 }: SidebarProps) {
-  const { user, chatHistory } = useUser()
+  const { user, chatHistory, removeChat } = useUser()
   const [toolsOpen, setToolsOpen] = useState(true)
   const [resourcesOpen, setResourcesOpen] = useState(true)
+  const [showAllChats, setShowAllChats] = useState(false)
 
   const sidebarWidth = collapsed ? 64 : 280
 
@@ -127,24 +130,56 @@ export default function Sidebar({
             <p className="px-2 py-2 text-xs font-medium text-surface-500 uppercase tracking-wider">
               Recent
             </p>
-            {chatHistory.slice(0, 8).map((chat) => (
+            <div className="space-y-0.5">
+              {(showAllChats ? chatHistory : chatHistory.slice(0, 5)).map((chat) => {
+                const isActive = activeView === 'chat' && activeChatId === chat.id
+                return (
+                  <motion.button
+                    key={chat.id}
+                    onClick={() => onChatSelect?.(chat.id, chat.documentId)}
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all duration-150 group relative',
+                      isActive
+                        ? 'bg-suits-500/10 text-surface-900'
+                        : 'text-surface-600 hover:bg-surface-200/60 hover:text-surface-800',
+                    )}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="active-chat-indicator"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-suits-500"
+                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      />
+                    )}
+                    <MessageSquare className={cn(
+                      'w-3.5 h-3.5 shrink-0',
+                      isActive ? 'text-suits-500' : 'opacity-40 group-hover:opacity-60',
+                    )} />
+                    <span className={cn(
+                      'text-sm truncate flex-1',
+                      isActive && 'font-medium',
+                    )}>{chat.title}</span>
+                    {/* Delete button on hover */}
+                    <span
+                      onClick={(e) => { e.stopPropagation(); removeChat(chat.id) }}
+                      className="opacity-0 group-hover:opacity-100 text-surface-500 hover:text-red-500 transition-opacity p-0.5 rounded shrink-0"
+                    >
+                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    </span>
+                  </motion.button>
+                )
+              })}
+            </div>
+            {chatHistory.length > 5 && (
               <button
-                key={chat.id}
-                onClick={() => {
-                  onViewChange('chat')
-                  onChatSelect?.(chat.id, chat.documentId)
-                }}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-colors duration-150 group',
-                  activeView === chat.id
-                    ? 'bg-surface-200 text-surface-900'
-                    : 'text-surface-600 hover:bg-surface-200/60 hover:text-surface-800',
-                )}
+                onClick={() => setShowAllChats(!showAllChats)}
+                className="w-full flex items-center gap-2 px-2.5 py-2 text-xs text-suits-600 hover:text-suits-500 transition-colors mt-1"
               >
-                <MessageSquare className="w-3.5 h-3.5 shrink-0 opacity-50" />
-                <span className="text-sm truncate">{chat.title}</span>
+                <ChevronDown className={cn('w-3 h-3 transition-transform', showAllChats && 'rotate-180')} />
+                <span>{showAllChats ? 'Show less' : `Show ${chatHistory.length - 5} more`}</span>
               </button>
-            ))}
+            )}
           </div>
         )}
 

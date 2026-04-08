@@ -9,12 +9,19 @@ export interface UserData {
   avatar?: string
 }
 
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export interface ChatHistoryItem {
   id: string
   title: string
   documentId?: string
   createdAt: number
   lastMessage?: string
+  messages?: ChatMessage[]
 }
 
 export interface DocumentItem {
@@ -105,7 +112,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
   const addChat = (chat: ChatHistoryItem) => {
     setChatHistory(prev => {
-      if (prev.find(c => c.id === chat.id)) return prev
+      const idx = prev.findIndex(c => c.id === chat.id)
+      if (idx >= 0) {
+        const updated = [...prev]
+        updated[idx] = { ...updated[idx], ...chat }
+        const [item] = updated.splice(idx, 1)
+        return [item, ...updated].slice(0, 20)
+      }
       return [chat, ...prev].slice(0, 20)
     })
   }

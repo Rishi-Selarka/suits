@@ -25,6 +25,7 @@ interface Message {
 }
 
 interface ChatInterfaceProps {
+  chatId: string
   documentId?: string
   onFileSelect?: (file: File) => void
 }
@@ -90,11 +91,21 @@ function ThinkingIndicator() {
   )
 }
 
-export default function ChatInterface({ documentId, onFileSelect }: ChatInterfaceProps) {
-  const { user, addChat } = useUser()
-  const [messages, setMessages] = useState<Message[]>([])
-  const [chatId] = useState(() => crypto.randomUUID())
-  const chatSavedRef = useRef(false)
+export default function ChatInterface({ chatId, documentId, onFileSelect }: ChatInterfaceProps) {
+  const { user, addChat, chatHistory } = useUser()
+
+  // Load existing messages if resuming a chat
+  const [messages, setMessages] = useState<Message[]>(() => {
+    const existing = chatHistory.find(c => c.id === chatId)
+    if (existing?.messages) {
+      return existing.messages.map(m => ({ ...m, sources: undefined }))
+    }
+    return []
+  })
+
+  const chatSavedRef = useRef(
+    chatHistory.some(c => c.id === chatId),
+  )
   const [isThinking, setIsThinking] = useState(false)
   const [streamingId, setStreamingId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -177,27 +188,31 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
         tokenBufferRef.current = ''
         streamMsgIdRef.current = null
 
-        setMessages(prev =>
-          prev.map(m =>
+        setMessages(prev => {
+          const updated = prev.map(m =>
             m.id === assistantId
               ? { ...m, content: m.content + remaining, sources }
               : m,
-          ),
-        )
-        setStreamingId(null)
-        setIsThinking(false)
+          )
 
-        // Save to chat history on first exchange
-        if (!chatSavedRef.current) {
+          // Persist messages to chat history (upsert)
+          const isFirstSave = !chatSavedRef.current
           chatSavedRef.current = true
           addChat({
             id: chatId,
-            title: content.slice(0, 50) + (content.length > 50 ? '...' : ''),
+            title: isFirstSave
+              ? content.slice(0, 50) + (content.length > 50 ? '...' : '')
+              : chatHistory.find(c => c.id === chatId)?.title || content.slice(0, 50),
             documentId,
-            createdAt: Date.now(),
+            createdAt: isFirstSave ? Date.now() : (chatHistory.find(c => c.id === chatId)?.createdAt || Date.now()),
             lastMessage: content,
+            messages: updated.map(m => ({ id: m.id, role: m.role, content: m.content })),
           })
-        }
+
+          return updated
+        })
+        setStreamingId(null)
+        setIsThinking(false)
       }
 
       const onError = (error: string) => {

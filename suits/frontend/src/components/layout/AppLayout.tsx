@@ -24,6 +24,7 @@ type AppView = 'chat' | 'uploading' | 'pipeline' | 'results' | string
 export default function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeView, setActiveView] = useState<AppView>('chat')
+  const [activeChatId, setActiveChatId] = useState<string>(() => crypto.randomUUID())
   const [activeDocumentId, setActiveDocumentId] = useState<string | undefined>()
   const [activeFilename, setActiveFilename] = useState<string>('')
   const [uploadError, setUploadError] = useState<string | null>(null)
@@ -89,6 +90,7 @@ export default function AppLayout() {
   }, [activeView, analysis.pipelineStatus, analysis.result, activeFilename, addDocument])
 
   const handleNewChat = useCallback(() => {
+    setActiveChatId(crypto.randomUUID())
     setActiveDocumentId(undefined)
     setActiveFilename('')
     setCachedResult(null)
@@ -97,7 +99,8 @@ export default function AppLayout() {
     setUploadError(null)
   }, [analysis])
 
-  const handleChatSelect = useCallback((_chatId: string, documentId?: string) => {
+  const handleChatSelect = useCallback((chatId: string, documentId?: string) => {
+    setActiveChatId(chatId)
     setActiveDocumentId(documentId)
     setActiveView('chat')
   }, [])
@@ -133,13 +136,14 @@ export default function AppLayout() {
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         onNewChat={handleNewChat}
         activeView={activeView}
+        activeChatId={activeChatId}
         onViewChange={handleViewChange}
         onChatSelect={handleChatSelect}
       />
 
       <main className="flex-1 overflow-hidden">
         {activeView === 'chat' && (
-          <ChatInterface key={activeDocumentId ?? 'general'} documentId={activeDocumentId} onFileSelect={handleFileSelect} />
+          <ChatInterface key={activeChatId} chatId={activeChatId} documentId={activeDocumentId} onFileSelect={handleFileSelect} />
         )}
 
         {activeView === 'uploading' && (
