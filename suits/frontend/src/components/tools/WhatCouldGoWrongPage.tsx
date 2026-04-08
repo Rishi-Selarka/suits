@@ -5,13 +5,13 @@ import { cn } from '@/lib/utils'
 import { staggerContainer, staggerItem } from '@/lib/motion'
 import type { AnalysisResult } from '@/api/client'
 
-export default function WhatCouldGoWrongPage({ result }: { result: AnalysisResult | null }) {
-  const issues = result?.advisory?.critical_issues || []
-  const missing = result?.advisory?.missing_clauses || []
-  const redRisks = result?.risks?.filter(r => r.risk_level === 'RED') || []
+function WhatCouldGoWrongContent({ result }: { result: AnalysisResult }) {
+  const issues = result.advisory?.critical_issues || []
+  const missing = result.advisory?.missing_clauses || []
+  const redRisks = result.risks?.filter(r => r.risk_level === 'RED') || []
 
   return (
-    <ToolLayout title="What Could Go Wrong" description="Worst-case scenarios and impact analysis" icon={AlertTriangle} result={result}>
+    <>
       {/* Critical Issues */}
       {issues.length > 0 && (
         <div className="mb-8">
@@ -94,6 +94,14 @@ export default function WhatCouldGoWrongPage({ result }: { result: AnalysisResul
       {issues.length === 0 && missing.length === 0 && redRisks.length === 0 && (
         <p className="text-center text-cream-400 py-12">No critical issues detected in this document.</p>
       )}
+    </>
+  )
+}
+
+export default function WhatCouldGoWrongPage() {
+  return (
+    <ToolLayout title="What Could Go Wrong" description="Worst-case scenarios and impact analysis" icon={AlertTriangle}>
+      {(result) => <WhatCouldGoWrongContent result={result} />}
     </ToolLayout>
   )
 }
