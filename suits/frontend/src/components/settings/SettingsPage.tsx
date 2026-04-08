@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Camera, Check, MapPin, Briefcase, Target, User } from 'lucide-react'
+import { Camera, Check, MapPin, Briefcase, Target, User, LogOut } from 'lucide-react'
 import { useUser } from '@/context/UserContext'
 import { cn } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
@@ -31,7 +31,7 @@ const PURPOSES = [
 ]
 
 export default function SettingsPage() {
-  const { user, setUser } = useUser()
+  const { user, setUser, resetUser } = useUser()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [name, setName] = useState(user.name)
@@ -212,6 +212,23 @@ export default function SettingsPage() {
                 You have unsaved changes
               </motion.span>
             )}
+          </div>
+
+          {/* ── Logout ── */}
+          <div className="mt-10 pt-6 border-t border-cream-200">
+            <p className="text-xs font-medium text-cream-400 uppercase tracking-wider mb-3">Reset</p>
+            <p className="text-sm text-cream-400 mb-4">
+              Clear all data and return to the onboarding screen. This removes your profile, chat history, and uploaded documents.
+            </p>
+            <motion.button
+              onClick={resetUser}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all duration-200"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <LogOut className="w-4 h-4" />
+              Logout &amp; Reset
+            </motion.button>
           </div>
         </motion.div>
       </div>
