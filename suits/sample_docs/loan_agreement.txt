@@ -1,0 +1,64 @@
+LOAN AGREEMENT
+
+This Loan Agreement ("Agreement") is executed on 5th January 2026 between:
+
+LENDER: Pinnacle Finance Ltd., NBFC registered with RBI, having its office at 7, Nariman Point, Mumbai – 400021 ("Lender")
+BORROWER: Mr. Rakesh Gupta, S/o Mr. Suresh Gupta, residing at 45, Sector 15, Noida, Uttar Pradesh – 201301 ("Borrower")
+
+1. LOAN AMOUNT
+The Lender agrees to lend INR 15,00,000 (Rupees Fifteen Lakhs) to the Borrower ("Principal") subject to the terms of this Agreement.
+
+2. INTEREST RATE
+2.1 The loan shall carry interest at 18% per annum, calculated on a reducing balance basis.
+2.2 In case of default, penal interest at 36% per annum shall apply on overdue amounts from the date of default.
+2.3 The Lender reserves the right to revise the interest rate with 30 days' prior notice. The Borrower's continued use of the loan after notice constitutes acceptance.
+
+3. REPAYMENT
+3.1 The loan shall be repaid in 36 equal monthly instalments (EMIs) of INR 54,225 each, commencing from 5th February 2026.
+3.2 EMIs are due on the 5th of every month. A grace period of 3 days is provided.
+3.3 Prepayment is allowed with a prepayment penalty of 3% of the outstanding principal.
+3.4 Partial prepayments shall first be applied to outstanding interest, then principal.
+
+4. SECURITY / COLLATERAL
+4.1 As security for this loan, the Borrower pledges his residential property at 45, Sector 15, Noida (Property).
+4.2 The Borrower shall not sell, transfer, or encumber the Property without written consent of the Lender.
+4.3 The Borrower shall maintain adequate insurance on the Property and assign the policy to the Lender.
+
+5. DEFAULT
+5.1 The Borrower shall be in default if:
+    (a) Any EMI is unpaid for more than 15 days after the due date
+    (b) The Borrower files for insolvency or bankruptcy
+    (c) The Borrower misrepresents any information in this Agreement
+    (d) The Property is sold or encumbered without consent
+5.2 Upon default, the entire outstanding loan amount becomes immediately due and payable (acceleration clause).
+5.3 The Lender may initiate proceedings under the SARFAESI Act, 2002 to recover dues without court intervention.
+
+6. PROCESSING FEE AND CHARGES
+6.1 Processing Fee: 2% of loan amount (INR 30,000), deducted upfront.
+6.2 Documentation charges: INR 5,000.
+6.3 Late payment fee: INR 1,500 per overdue EMI, in addition to penal interest.
+6.4 Cheque bounce charges: INR 500 per instance.
+
+7. REPRESENTATIONS BY BORROWER
+The Borrower represents and warrants that:
+(a) He has full legal capacity to enter this Agreement
+(b) No existing litigation or encumbrance affects the collateral property
+(c) All information provided is true and accurate
+
+8. CROSS-DEFAULT
+Default under any other loan or credit facility of the Borrower shall constitute a default under this Agreement.
+
+9. GOVERNING LAW
+This Agreement is governed by the laws of India. Disputes shall be resolved by the courts of Mumbai, Maharashtra.
+
+10. ENTIRE AGREEMENT
+This Agreement, along with the sanction letter and security documents, constitutes the entire agreement between the parties.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement on the date first written above.
+
+For Pinnacle Finance Ltd.                     Borrower
+
+_______________________________              _______________________________
+Authorized Signatory                          Rakesh Gupta
+
+Witness 1: ____________________              Witness 2: ____________________

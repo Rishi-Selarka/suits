@@ -1,0 +1,60 @@
+VENDOR SUPPLY AGREEMENT
+
+This Vendor Supply Agreement ("Agreement") is made on 1st March 2026 between:
+
+BUYER: FreshMart Retail Pvt. Ltd., Plot 9, MIDC Industrial Area, Pune – 411019 ("Buyer")
+VENDOR: Agro Fresh Suppliers LLP, Survey No. 45, Nashik Road, Nashik – 422101 ("Vendor")
+
+1. SCOPE
+The Vendor agrees to supply fresh fruits and vegetables as specified in Purchase Orders issued by the Buyer from time to time ("Products").
+
+2. TERM
+This Agreement shall be effective from 1st March 2026 and continue for 12 months, unless terminated earlier. It shall auto-renew for successive 12-month terms unless either party gives 60 days' written notice of non-renewal.
+
+3. PRICING AND PAYMENT
+3.1 Prices shall be as agreed in each Purchase Order.
+3.2 The Buyer reserves the right to renegotiate prices if market rates fall by more than 10%.
+3.3 Payment shall be made within 45 days of delivery and acceptance ("Credit Period").
+3.4 The Buyer may deduct any claims, penalties, or damages from pending payments without prior notice to the Vendor.
+
+4. DELIVERY
+4.1 Delivery shall be made to the Buyer's warehouse at Pune within the timeframe specified in each Purchase Order.
+4.2 Delivery delays beyond 24 hours shall attract a penalty of 1% of the Purchase Order value per day of delay, capped at 10%.
+4.3 The Vendor shall bear all transportation, insurance, and handling costs.
+
+5. QUALITY STANDARDS
+5.1 All Products must meet the quality specifications in Annexure A.
+5.2 The Buyer's quality team shall inspect all deliveries. Rejected Products shall be returned at the Vendor's cost within 48 hours.
+5.3 If more than 10% of any shipment is rejected, the Buyer may cancel the entire Purchase Order without liability.
+5.4 Three consecutive quality failures entitle the Buyer to terminate this Agreement immediately.
+
+6. EXCLUSIVITY
+During the term of this Agreement, the Vendor shall not supply the same Products to any direct competitor of the Buyer (as defined in Annexure B) in the Pune region without prior written consent.
+
+7. INDEMNIFICATION
+7.1 The Vendor shall indemnify and hold harmless the Buyer against any losses, claims, or liabilities arising from:
+    (a) Defective or contaminated Products
+    (b) Breach of any warranty or representation
+    (c) Violations of FSSAI or other applicable regulations
+7.2 The Buyer's indemnification obligations are limited to the invoice value of the relevant Purchase Order.
+
+8. FORCE MAJEURE
+Neither party shall be liable for delays caused by events beyond reasonable control, including natural disasters, strikes, or government restrictions, provided the affected party notifies the other within 48 hours and resumes performance as soon as possible. Force majeure exceeding 30 days entitles either party to terminate without penalty.
+
+9. TERMINATION
+9.1 Either party may terminate for convenience with 30 days' written notice.
+9.2 The Buyer may terminate immediately for cause, including quality failures, insolvency, or breach.
+9.3 Upon termination, the Vendor shall fulfill all pending Purchase Orders placed before the termination notice.
+
+10. LIMITATION OF LIABILITY
+The Vendor's total liability under this Agreement shall not exceed the aggregate value of Purchase Orders in the preceding 3 months.
+
+11. GOVERNING LAW
+This Agreement is governed by Indian law. Disputes shall be resolved by arbitration in Pune under the Arbitration and Conciliation Act, 1996.
+
+IN WITNESS WHEREOF, the parties have signed this Agreement as of the date first written above.
+
+For FreshMart Retail Pvt. Ltd.               For Agro Fresh Suppliers LLP
+
+_______________________________              _______________________________
+Authorized Signatory                          Designated Partner

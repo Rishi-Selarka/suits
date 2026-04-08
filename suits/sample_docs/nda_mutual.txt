@@ -1,0 +1,63 @@
+MUTUAL NON-DISCLOSURE AGREEMENT
+
+This Mutual Non-Disclosure Agreement ("Agreement") is entered into as of 15th March 2026 between:
+
+Party A: Zenith Analytics Pvt. Ltd., having its registered office at 301, Cyber City, Gurugram, Haryana – 122002 ("Zenith")
+Party B: DataBridge Technologies Pvt. Ltd., having its registered office at 14, Whitefield Main Road, Bengaluru – 560066 ("DataBridge")
+
+(Each a "Party" and collectively the "Parties")
+
+RECITALS
+The Parties wish to explore a potential business collaboration involving data analytics and AI services. In connection therewith, each Party may disclose certain Confidential Information to the other Party.
+
+1. DEFINITION OF CONFIDENTIAL INFORMATION
+"Confidential Information" means any non-public information disclosed by one Party ("Disclosing Party") to the other ("Receiving Party"), whether orally, in writing, or by any other means, including but not limited to:
+- Business plans, strategies, and projections
+- Technical data, algorithms, source code, and software
+- Customer lists, pricing, and financial information
+- Proprietary processes, methodologies, and trade secrets
+- Any information marked "Confidential" or "Proprietary"
+
+2. EXCLUSIONS
+Confidential Information does not include information that:
+(a) Is or becomes publicly available through no fault of the Receiving Party
+(b) Was already known to the Receiving Party before disclosure
+(c) Is independently developed by the Receiving Party without reference to Confidential Information
+(d) Is disclosed pursuant to a court order, provided the Disclosing Party is given prompt notice
+
+3. OBLIGATIONS
+3.1 The Receiving Party shall:
+(a) Hold Confidential Information in strict confidence
+(b) Not disclose Confidential Information to any third party without prior written consent
+(c) Use Confidential Information solely for evaluating the potential business collaboration
+(d) Limit access to those employees with a strict need-to-know basis
+(e) Apply at least the same degree of protection as it applies to its own confidential information, but no less than reasonable care
+
+3.2 The Receiving Party shall promptly notify the Disclosing Party upon becoming aware of any unauthorized disclosure or use.
+
+4. TERM
+This Agreement shall remain in effect for 2 years from the date of execution. The confidentiality obligations shall survive termination for a further period of 3 years.
+
+5. RETURN OF INFORMATION
+Upon request or termination of discussions, the Receiving Party shall promptly return or destroy all Confidential Information and certify such destruction in writing within 7 days.
+
+6. NO LICENSE
+Nothing in this Agreement grants either Party any license or right in the other's Confidential Information except as expressly stated herein.
+
+7. REMEDIES
+The Parties acknowledge that breach of this Agreement may cause irreparable harm for which monetary damages would be inadequate. Each Party shall be entitled to seek injunctive relief without the need to post bond, in addition to other remedies available at law.
+
+8. GOVERNING LAW
+This Agreement shall be governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of courts in Delhi.
+
+9. ENTIRE AGREEMENT
+This Agreement constitutes the entire agreement between the Parties with respect to its subject matter and supersedes all prior negotiations.
+
+IN WITNESS WHEREOF, the Parties have executed this Agreement as of the date first written above.
+
+For Zenith Analytics Pvt. Ltd.               For DataBridge Technologies Pvt. Ltd.
+
+_______________________________              _______________________________
+Name:                                         Name:
+Designation:                                  Designation:
+Date:                                         Date:
