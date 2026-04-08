@@ -113,9 +113,15 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
   const tokenBufferRef = useRef('')
   const rafRef = useRef<number>(0)
   const streamMsgIdRef = useRef<string | null>(null)
+  const messagesRef = useRef<Message[]>(messages)
 
   const isEmpty = messages.length === 0
   const isBusy = isThinking || streamingId !== null
+
+  // Keep messages ref in sync so async callbacks always see latest
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   // Auto-scroll
   useEffect(() => {
@@ -188,25 +194,22 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
         tokenBufferRef.current = ''
         streamMsgIdRef.current = null
 
-        // Compute final messages (updater runs synchronously)
-        let finalMessages: Message[] = []
-        setMessages(prev => {
-          finalMessages = prev.map(m =>
-            m.id === assistantId
-              ? { ...m, content: m.content + remaining, sources }
-              : m,
-          )
-          return finalMessages
-        })
+        // Compute final messages from ref (setState updaters run during render, not inline)
+        const finalMessages = messagesRef.current.map(m =>
+          m.id === assistantId
+            ? { ...m, content: m.content + remaining, sources }
+            : m,
+        )
+
+        setMessages(finalMessages)
         setStreamingId(null)
         setIsThinking(false)
 
-        // Persist to chat history — outside setMessages to avoid side-effects in updater
+        // Persist to chat history
         const isFirstSave = !chatSavedRef.current
         chatSavedRef.current = true
         addChat({
           id: chatId,
-          // Empty title on updates → upsert preserves existing title
           title: isFirstSave
             ? content.slice(0, 50) + (content.length > 50 ? '...' : '')
             : '',
