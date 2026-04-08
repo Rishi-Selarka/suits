@@ -68,9 +68,7 @@ export default function ChatMessage({
     >
       {/* AI avatar */}
       {!isUser && (
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-suits-500 to-suits-700 flex items-center justify-center shrink-0 mt-1">
-          <span className="text-white text-xs font-bold">S</span>
-        </div>
+        <img src="/images/suits-logo.png" alt="Suits AI" className="w-8 h-8 object-contain shrink-0 mt-1" />
       )}
 
       <div className={cn('max-w-[680px]', isUser ? 'items-end' : '')}>

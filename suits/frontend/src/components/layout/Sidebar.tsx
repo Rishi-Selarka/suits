@@ -85,7 +85,7 @@ export default function Sidebar({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-suits-500 to-suits-700 shrink-0" />
+              <img src="/images/suits-logo.png" alt="Suits AI" className="w-8 h-8 object-contain shrink-0 rounded-lg" />
               <span className="text-surface-900 font-semibold text-sm tracking-wide">
                 SUITS
               </span>
@@ -110,7 +110,7 @@ export default function Sidebar({
         <motion.button
           onClick={onNewChat}
           className={cn(
-            'w-full flex items-center gap-2.5 rounded-xl border border-surface-300 hover:border-suits-500/50 hover:bg-suits-500/5 transition-all duration-200 text-surface-700 hover:text-surface-900',
+            'w-full flex items-center gap-2.5 rounded-xl bg-cream text-surface-200 border border-cream-200 hover:bg-cream-100 hover:border-cream-300 transition-all duration-200',
             collapsed ? 'p-2.5 justify-center' : 'px-3.5 py-2.5',
           )}
           whileHover={{ scale: 1.01 }}
@@ -139,7 +139,7 @@ export default function Sidebar({
                     className={cn(
                       'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all duration-150 group relative',
                       isActive
-                        ? 'bg-suits-500/10 text-surface-900'
+                        ? 'bg-cream/10 text-surface-900'
                         : 'text-surface-600 hover:bg-surface-200/60 hover:text-surface-800',
                     )}
                     whileTap={{ scale: 0.98 }}
@@ -147,13 +147,13 @@ export default function Sidebar({
                     {isActive && (
                       <motion.div
                         layoutId="active-chat-indicator"
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-suits-500"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-cream"
                         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                       />
                     )}
                     <MessageSquare className={cn(
                       'w-3.5 h-3.5 shrink-0',
-                      isActive ? 'text-suits-500' : 'opacity-40 group-hover:opacity-60',
+                      isActive ? 'text-cream' : 'opacity-40 group-hover:opacity-60',
                     )} />
                     <span className={cn(
                       'text-sm truncate flex-1',

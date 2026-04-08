@@ -89,9 +89,7 @@ export default function SplashScreen({ onContinue }: SplashScreenProps) {
                 className="mb-16"
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-suits-500 to-suits-700 flex items-center justify-center shadow-lg shadow-suits-500/20">
-                    <span className="text-white text-sm font-bold">S</span>
-                  </div>
+                  <img src="/images/suits-logo.png" alt="Suits AI" className="w-8 h-8 object-contain" />
                   <span className="text-surface-600 text-sm font-medium tracking-widest uppercase">
                     Suits AI
                   </span>
