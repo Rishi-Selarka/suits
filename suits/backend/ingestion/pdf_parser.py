@@ -1,4 +1,4 @@
-"""PDF text extraction with PyMuPDF and OCR fallback for Suits AI."""
+"""PDF text & table extraction with PyMuPDF and OCR fallback for Suits AI."""
 
 from __future__ import annotations
 
@@ -18,11 +18,16 @@ _MIN_WORDS_FOR_TEXT_PDF = 50
 
 
 def parse_pdf(file_path: str) -> tuple[str, int]:
-    """Extract text and page count from a PDF file.
+    """Extract text, tables, and page count from a PDF file.
 
-    Uses PyMuPDF (fitz) for text-layer extraction.  If the extracted text
-    contains fewer than 50 words the document is assumed to be scanned, and
-    every page is rendered to an image then OCR'd via pytesseract.
+    Uses PyMuPDF (fitz) for text-layer extraction and ``page.find_tables()``
+    for structured table data.  Tables are rendered as Markdown and inserted
+    at the correct position in the page text so downstream agents see them in
+    reading order.
+
+    If the extracted text contains fewer than 50 words the document is assumed
+    to be scanned, and every page is rendered as an image then OCR'd via
+    pytesseract (tables cannot be extracted from scanned pages this way).
 
     Args:
         file_path: Absolute path to the PDF file.
@@ -32,7 +37,6 @@ def parse_pdf(file_path: str) -> tuple[str, int]:
 
     Raises:
         FileNotFoundError: If *file_path* does not exist.
-        RuntimeError: If both text extraction and OCR produce no output.
     """
     path = Path(file_path)
     if not path.exists():
@@ -43,8 +47,8 @@ def parse_pdf(file_path: str) -> tuple[str, int]:
         extra={"status": "pdf_parse_start"},
     )
 
-    # -- Primary extraction via PyMuPDF text layer -------------------------
-    text, page_count = _extract_with_pymupdf(file_path)
+    # -- Primary extraction via PyMuPDF text layer + tables -------------------
+    text, page_count, table_count = _extract_with_pymupdf(file_path)
 
     word_count = len(text.split())
     if word_count < _MIN_WORDS_FOR_TEXT_PDF:
@@ -69,24 +73,93 @@ def parse_pdf(file_path: str) -> tuple[str, int]:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _extract_with_pymupdf(file_path: str) -> tuple[str, int]:
-    """Use PyMuPDF (fitz) to extract text from every page."""
+
+def _table_to_markdown(table: fitz.table.Table) -> str:
+    """Convert a PyMuPDF Table object into a Markdown table string."""
+    try:
+        rows = table.extract()
+    except Exception:
+        return ""
+
+    if not rows:
+        return ""
+
+    # Clean None / empty cells
+    cleaned: list[list[str]] = []
+    for row in rows:
+        cleaned.append([cell.strip() if cell else "" for cell in row])
+
+    if not cleaned:
+        return ""
+
+    col_count = max(len(r) for r in cleaned)
+
+    # Pad rows that are shorter than the widest row
+    for row in cleaned:
+        while len(row) < col_count:
+            row.append("")
+
+    lines: list[str] = []
+    # Header row
+    lines.append("| " + " | ".join(cleaned[0]) + " |")
+    # Separator
+    lines.append("| " + " | ".join("---" for _ in range(col_count)) + " |")
+    # Data rows
+    for row in cleaned[1:]:
+        lines.append("| " + " | ".join(row) + " |")
+
+    return "\n".join(lines)
+
+
+def _extract_with_pymupdf(file_path: str) -> tuple[str, int, int]:
+    """Use PyMuPDF to extract text and tables from every page.
+
+    Tables are detected via ``page.find_tables()``, converted to Markdown,
+    and appended after the page's plain text so the LLM can interpret them.
+
+    Returns:
+        (full_text, page_count, total_tables_found)
+    """
     doc = fitz.open(file_path)
     page_count = len(doc)
     pages_text: list[str] = []
+    total_tables = 0
 
     for page_num in range(page_count):
         page = doc[page_num]
+        parts: list[str] = []
+
+        # --- Plain text extraction ---
         page_text = page.get_text("text")
-        if page_text:
-            pages_text.append(page_text)
+        if page_text and page_text.strip():
+            parts.append(page_text.strip())
+
+        # --- Table extraction ---
+        try:
+            tables = page.find_tables()
+            if tables and tables.tables:
+                for table in tables.tables:
+                    md = _table_to_markdown(table)
+                    if md:
+                        total_tables += 1
+                        parts.append(f"\n[Table on page {page_num + 1}]\n{md}\n")
+        except Exception as exc:
+            logger.debug(
+                f"Table extraction failed on page {page_num + 1}: {exc}",
+                extra={"status": "table_extract_warn"},
+            )
+
+        if parts:
+            pages_text.append("\n\n".join(parts))
 
     doc.close()
+
     logger.info(
-        f"PyMuPDF extracted text from {len(pages_text)}/{page_count} pages",
+        f"PyMuPDF extracted text from {len(pages_text)}/{page_count} pages, "
+        f"{total_tables} table(s) found",
         extra={"status": "pymupdf_done"},
     )
-    return "\n\n".join(pages_text), page_count
+    return "\n\n".join(pages_text), page_count, total_tables
 
 
 def _extract_with_ocr(file_path: str) -> str:
