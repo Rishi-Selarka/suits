@@ -9,12 +9,19 @@ export interface UserData {
   avatar?: string
 }
 
-interface ChatHistoryItem {
+export interface ChatHistoryItem {
   id: string
   title: string
   documentId?: string
   createdAt: number
   lastMessage?: string
+}
+
+export interface DocumentItem {
+  id: string
+  filename: string
+  uploadedAt: number
+  analyzed: boolean
 }
 
 interface UserContextType {
@@ -24,10 +31,13 @@ interface UserContextType {
   chatHistory: ChatHistoryItem[]
   addChat: (chat: ChatHistoryItem) => void
   removeChat: (id: string) => void
+  documents: DocumentItem[]
+  addDocument: (doc: DocumentItem) => void
 }
 
 const STORAGE_KEY = 'suits-user'
 const CHAT_HISTORY_KEY = 'suits-chats'
+const DOCUMENTS_KEY = 'suits-documents'
 
 const defaultUser: UserData = {
   name: '',
@@ -55,9 +65,18 @@ function loadChats(): ChatHistoryItem[] {
   return []
 }
 
+function loadDocuments(): DocumentItem[] {
+  try {
+    const stored = localStorage.getItem(DOCUMENTS_KEY)
+    if (stored) return JSON.parse(stored)
+  } catch { /* ignore */ }
+  return []
+}
+
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserData>(loadUser)
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>(loadChats)
+  const [documents, setDocuments] = useState<DocumentItem[]>(loadDocuments)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
@@ -67,6 +86,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory))
   }, [chatHistory])
 
+  useEffect(() => {
+    localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(documents))
+  }, [documents])
+
   const setUser = (data: Partial<UserData>) => {
     setUserState(prev => ({ ...prev, ...data }))
   }
@@ -74,20 +97,37 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const resetUser = () => {
     setUserState(defaultUser)
     setChatHistory([])
+    setDocuments([])
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(CHAT_HISTORY_KEY)
+    localStorage.removeItem(DOCUMENTS_KEY)
   }
 
   const addChat = (chat: ChatHistoryItem) => {
-    setChatHistory(prev => [chat, ...prev])
+    setChatHistory(prev => {
+      if (prev.find(c => c.id === chat.id)) return prev
+      return [chat, ...prev].slice(0, 20)
+    })
   }
 
   const removeChat = (id: string) => {
     setChatHistory(prev => prev.filter(c => c.id !== id))
   }
 
+  const addDocument = (doc: DocumentItem) => {
+    setDocuments(prev => {
+      const existing = prev.findIndex(d => d.id === doc.id)
+      if (existing >= 0) {
+        const updated = [...prev]
+        updated[existing] = doc
+        return updated
+      }
+      return [doc, ...prev]
+    })
+  }
+
   return (
-    <UserContext.Provider value={{ user, setUser, resetUser, chatHistory, addChat, removeChat }}>
+    <UserContext.Provider value={{ user, setUser, resetUser, chatHistory, addChat, removeChat, documents, addDocument }}>
       {children}
     </UserContext.Provider>
   )

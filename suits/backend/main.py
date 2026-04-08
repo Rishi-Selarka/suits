@@ -399,6 +399,65 @@ async def get_results(document_id: str, request: Request) -> AnalysisResult:
     return result
 
 
+# ── POST /api/chat/stream (streaming general chat) ─────────────────────────
+# NOTE: Static routes MUST be defined before parameterized /api/chat/{document_id}
+
+@app.post("/api/chat/stream")
+async def general_chat_stream(body: ChatRequest, request: Request) -> EventSourceResponse:
+    """Streaming general legal advisor chat via SSE."""
+    llm_client = _llm(request)
+    settings = _settings(request)
+
+    if not body.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
+
+    chat_config = settings.agent_models.general_chat
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        try:
+            async for token in llm_client.call_stream(
+                config=chat_config,
+                system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
+                user_message=body.message,
+            ):
+                yield json.dumps({"type": "token", "content": token})
+            yield json.dumps({"type": "done", "source_clauses": []})
+        except Exception as exc:
+            logger.error(f"Stream chat failed: {exc}", extra={"status": "chat_error"})
+            yield json.dumps({"type": "error", "content": "Failed to generate response."})
+
+    return EventSourceResponse(event_generator())
+
+
+# ── POST /api/chat (general legal advisor — no document needed) ────────────
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def general_chat(body: ChatRequest, request: Request) -> ChatResponse:
+    """General legal advisor chat — no document upload required."""
+    llm_client = _llm(request)
+    settings = _settings(request)
+
+    if not body.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
+
+    chat_config = settings.agent_models.general_chat
+
+    try:
+        llm_response = await llm_client.call_with_retry(
+            config=chat_config,
+            system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
+            user_message=body.message,
+        )
+        return ChatResponse(answer=llm_response.text, source_clauses=[])
+    except Exception as exc:
+        logger.error(f"General chat failed: {exc}", extra={"status": "chat_error"})
+        raise HTTPException(status_code=500, detail="Failed to generate response. Please try again.") from exc
+
+
 # ── POST /api/chat/{document_id} ────────────────────────────────────────────
 
 @app.post("/api/chat/{document_id}", response_model=ChatResponse)
@@ -501,64 +560,6 @@ async def chat_with_document(
         memory.add_message(document_id, "assistant", llm_response.text)
 
     return ChatResponse(answer=llm_response.text, source_clauses=[])
-
-
-# ── POST /api/chat (general legal advisor — no document needed) ────────────
-
-@app.post("/api/chat", response_model=ChatResponse)
-async def general_chat(body: ChatRequest, request: Request) -> ChatResponse:
-    """General legal advisor chat — no document upload required."""
-    llm_client = _llm(request)
-    settings = _settings(request)
-
-    if not body.message.strip():
-        raise HTTPException(status_code=400, detail="Message cannot be empty.")
-
-    from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
-
-    chat_config = settings.agent_models.general_chat
-
-    try:
-        llm_response = await llm_client.call_with_retry(
-            config=chat_config,
-            system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
-            user_message=body.message,
-        )
-        return ChatResponse(answer=llm_response.text, source_clauses=[])
-    except Exception as exc:
-        logger.error(f"General chat failed: {exc}", extra={"status": "chat_error"})
-        raise HTTPException(status_code=500, detail="Failed to generate response. Please try again.") from exc
-
-
-# ── POST /api/chat/stream (streaming general chat) ─────────────────────────
-
-@app.post("/api/chat/stream")
-async def general_chat_stream(body: ChatRequest, request: Request) -> EventSourceResponse:
-    """Streaming general legal advisor chat via SSE."""
-    llm_client = _llm(request)
-    settings = _settings(request)
-
-    if not body.message.strip():
-        raise HTTPException(status_code=400, detail="Message cannot be empty.")
-
-    from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
-
-    chat_config = settings.agent_models.general_chat
-
-    async def event_generator() -> AsyncGenerator[str, None]:
-        try:
-            async for token in llm_client.call_stream(
-                config=chat_config,
-                system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
-                user_message=body.message,
-            ):
-                yield json.dumps({"type": "token", "content": token})
-            yield json.dumps({"type": "done", "source_clauses": []})
-        except Exception as exc:
-            logger.error(f"Stream chat failed: {exc}", extra={"status": "chat_error"})
-            yield json.dumps({"type": "error", "content": "Failed to generate response."})
-
-    return EventSourceResponse(event_generator())
 
 
 # ── POST /api/chat/{document_id}/stream (streaming document chat) ──────────

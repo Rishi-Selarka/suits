@@ -5,7 +5,17 @@ import ChatInterface from '@/components/chat/ChatInterface'
 import PipelineProgress from '@/components/pipeline/PipelineProgress'
 import ResultsDashboard from '@/components/analysis/ResultsDashboard'
 import SettingsPage from '@/components/settings/SettingsPage'
+import RiskScorePage from '@/components/tools/RiskScorePage'
+import WhatCouldGoWrongPage from '@/components/tools/WhatCouldGoWrongPage'
+import DeadlineTrackerPage from '@/components/tools/DeadlineTrackerPage'
+import TimebombPage from '@/components/tools/TimebombPage'
+import TrapDetectorPage from '@/components/tools/TrapDetectorPage'
+import NegotiatorPage from '@/components/tools/NegotiatorPage'
+import DocumentsPage from '@/components/tools/DocumentsPage'
+import LibraryPage from '@/components/tools/LibraryPage'
+import DownloadsPage from '@/components/tools/DownloadsPage'
 import { useAnalysis } from '@/hooks/useAnalysis'
+import { useUser } from '@/context/UserContext'
 import { uploadDocument, getResults, type AnalysisResult } from '@/api/client'
 import { easeOutExpo } from '@/lib/motion'
 
@@ -20,6 +30,7 @@ export default function AppLayout() {
   const [cachedResult, setCachedResult] = useState<AnalysisResult | null>(null)
 
   const analysis = useAnalysis()
+  const { addDocument } = useUser()
 
   // ── Upload → Analyze → Results flow ──
 
@@ -35,10 +46,13 @@ export default function AppLayout() {
       const docId = uploadRes.document_id
       setActiveDocumentId(docId)
 
+      addDocument({ id: docId, filename: file.name, uploadedAt: Date.now(), analyzed: false })
+
       // If server already has this analyzed (cached), jump to results
       if (uploadRes.status === 'cached') {
         const result = await getResults(docId)
         setCachedResult(result)
+        addDocument({ id: docId, filename: file.name, uploadedAt: Date.now(), analyzed: true })
         setActiveView('results')
         return
       }
@@ -48,12 +62,11 @@ export default function AppLayout() {
       await analysis.runAnalysis(docId)
 
       // Step 3: When analysis completes via SSE, result is in analysis.result
-      // The useEffect below handles view transition
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed')
       setActiveView('chat')
     }
-  }, [analysis])
+  }, [analysis, addDocument])
 
   // Watch for analysis completion
   const currentResult = cachedResult || analysis.result
@@ -62,8 +75,13 @@ export default function AppLayout() {
     (analysis.pipelineStatus === 'complete' || analysis.pipelineStatus === 'cached') &&
     analysis.result
   ) {
-    // Synchronous view transition when result arrives
     setCachedResult(analysis.result)
+    addDocument({
+      id: analysis.result.document_id,
+      filename: activeFilename,
+      uploadedAt: Date.now(),
+      analyzed: true,
+    })
     setActiveView('results')
   }
 
@@ -89,6 +107,17 @@ export default function AppLayout() {
     setActiveView(view)
   }, [])
 
+  const handleViewDocument = useCallback((docId: string) => {
+    setActiveDocumentId(docId)
+    // Try to load results for this document
+    getResults(docId).then(result => {
+      setCachedResult(result)
+      setActiveView('results')
+    }).catch(() => {
+      setActiveView('chat')
+    })
+  }, [])
+
   return (
     <motion.div
       className="flex h-screen overflow-hidden"
@@ -106,15 +135,10 @@ export default function AppLayout() {
       />
 
       <main className="flex-1 overflow-hidden">
-        {/* Chat view */}
         {activeView === 'chat' && (
-          <ChatInterface
-            documentId={activeDocumentId}
-            onFileSelect={handleFileSelect}
-          />
+          <ChatInterface documentId={activeDocumentId} onFileSelect={handleFileSelect} />
         )}
 
-        {/* Uploading state */}
         {activeView === 'uploading' && (
           <div className="flex-1 flex items-center justify-center h-screen bg-cream">
             <motion.div
@@ -134,7 +158,6 @@ export default function AppLayout() {
           </div>
         )}
 
-        {/* Pipeline progress */}
         {activeView === 'pipeline' && (
           <PipelineProgress
             agents={analysis.agents}
@@ -145,55 +168,21 @@ export default function AppLayout() {
           />
         )}
 
-        {/* Results dashboard */}
         {activeView === 'results' && currentResult && (
-          <ResultsDashboard
-            result={currentResult}
-            filename={activeFilename}
-            onOpenChat={handleOpenChat}
-          />
+          <ResultsDashboard result={currentResult} filename={activeFilename} onOpenChat={handleOpenChat} />
         )}
 
-        {/* Settings */}
         {activeView === 'settings' && <SettingsPage />}
-
-        {/* Tool views — stubs */}
-        {!['chat', 'uploading', 'pipeline', 'results', 'settings'].includes(activeView) && (
-          <ToolPlaceholder view={activeView} />
-        )}
+        {activeView === 'risk-score' && <RiskScorePage result={currentResult} />}
+        {activeView === 'simulator' && <WhatCouldGoWrongPage result={currentResult} />}
+        {activeView === 'deadlines' && <DeadlineTrackerPage result={currentResult} />}
+        {activeView === 'timebomb' && <TimebombPage result={currentResult} />}
+        {activeView === 'trap-detector' && <TrapDetectorPage result={currentResult} />}
+        {activeView === 'negotiator' && <NegotiatorPage result={currentResult} />}
+        {activeView === 'documents' && <DocumentsPage onViewDocument={handleViewDocument} />}
+        {activeView === 'library' && <LibraryPage />}
+        {activeView === 'downloads' && <DownloadsPage result={currentResult} />}
       </main>
     </motion.div>
-  )
-}
-
-function ToolPlaceholder({ view }: { view: string }) {
-  const labels: Record<string, string> = {
-    'risk-score': 'Risk Score',
-    simulator: 'What Could Go Wrong',
-    deadlines: 'Deadline Tracker',
-    timebomb: 'Timebomb Clause Finder',
-    'trap-detector': 'Trap Clause Detector',
-    negotiator: 'AI vs AI Negotiator',
-    library: 'Library & Sources',
-    downloads: 'Downloads',
-    documents: 'Documents',
-    settings: 'Settings',
-  }
-
-  return (
-    <div className="flex-1 flex items-center justify-center h-screen bg-cream">
-      <motion.div
-        key={view}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="text-center"
-      >
-        <h2 className="text-2xl font-light text-surface-300 mb-2">
-          {labels[view] || view}
-        </h2>
-        <p className="text-cream-400 text-sm">Coming soon</p>
-      </motion.div>
-    </div>
   )
 }
