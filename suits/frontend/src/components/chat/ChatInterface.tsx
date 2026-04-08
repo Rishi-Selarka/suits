@@ -5,7 +5,6 @@ import {
   FileSearch,
   ShieldAlert,
   Handshake,
-  Scale,
   Sparkles,
 } from 'lucide-react'
 import { useUser } from '@/context/UserContext'
@@ -170,15 +169,6 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
               transition={{ duration: 0.7, ease: easeOutExpo }}
               className="text-center mb-12"
             >
-              <motion.div
-                className="mx-auto mb-6 w-16 h-16 rounded-2xl bg-surface-100 border border-surface-300/50 flex items-center justify-center"
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
-              >
-                <Scale className="w-7 h-7 text-surface-300" />
-              </motion.div>
-
               <h1 className="text-3xl font-light text-surface-200 mb-2">
                 {getGreeting()}, {user.name}
               </h1>

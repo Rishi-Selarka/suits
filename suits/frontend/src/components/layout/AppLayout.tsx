@@ -4,6 +4,7 @@ import Sidebar from './Sidebar'
 import ChatInterface from '@/components/chat/ChatInterface'
 import PipelineProgress from '@/components/pipeline/PipelineProgress'
 import ResultsDashboard from '@/components/analysis/ResultsDashboard'
+import SettingsPage from '@/components/settings/SettingsPage'
 import { useAnalysis } from '@/hooks/useAnalysis'
 import { uploadDocument, getResults, type AnalysisResult } from '@/api/client'
 import { easeOutExpo } from '@/lib/motion'
@@ -153,8 +154,11 @@ export default function AppLayout() {
           />
         )}
 
+        {/* Settings */}
+        {activeView === 'settings' && <SettingsPage />}
+
         {/* Tool views — stubs */}
-        {!['chat', 'uploading', 'pipeline', 'results'].includes(activeView) && (
+        {!['chat', 'uploading', 'pipeline', 'results', 'settings'].includes(activeView) && (
           <ToolPlaceholder view={activeView} />
         )}
       </main>

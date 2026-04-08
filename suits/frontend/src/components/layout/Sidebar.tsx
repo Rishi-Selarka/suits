@@ -269,10 +269,14 @@ export default function Sidebar({
             collapsed ? 'justify-center' : '',
           )}
         >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-suits-400 to-suits-600 flex items-center justify-center shrink-0">
-            <span className="text-white text-xs font-semibold">
-              {user.name?.[0]?.toUpperCase() || 'U'}
-            </span>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-suits-400 to-suits-600 flex items-center justify-center shrink-0 overflow-hidden">
+            {user.avatar ? (
+              <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-white text-xs font-semibold">
+                {user.name?.[0]?.toUpperCase() || 'U'}
+              </span>
+            )}
           </div>
           {!collapsed && (
             <>

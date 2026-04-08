@@ -6,6 +6,7 @@ export interface UserData {
   profession: string
   purpose: string
   onboarded: boolean
+  avatar?: string
 }
 
 interface ChatHistoryItem {
