@@ -354,3 +354,86 @@ export async function healthCheck(): Promise<Record<string, unknown>> {
   const { data } = await api.get('/health')
   return data
 }
+
+// ── Negotiation types & stream ──
+
+export interface NegotiateEvent {
+  type:
+    | 'negotiate_start'
+    | 'agent_start'
+    | 'token'
+    | 'agent_end'
+    | 'conclusion_start'
+    | 'done'
+    | 'error'
+  agent?: 'advocate' | 'challenger' | 'conclusion'
+  content?: string
+  round?: number
+  rounds?: number
+  topic?: string
+  total_rounds?: number
+}
+
+export async function negotiateStream(
+  message: string,
+  documentId: string | undefined,
+  rounds: number,
+  onEvent: (event: NegotiateEvent) => void,
+  onError?: (error: string) => void,
+): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE}/negotiate/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({
+        message,
+        document_id: documentId || null,
+        rounds,
+      }),
+    })
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Negotiation failed' }))
+      onError?.(err.detail || 'Negotiation failed')
+      return
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader) { onError?.('No stream'); return }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let gotDone = false
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed || !trimmed.startsWith('data:')) continue
+        const jsonStr = trimmed.slice(5).trim()
+        if (!jsonStr) continue
+        try {
+          const evt = JSON.parse(jsonStr) as NegotiateEvent
+          if (evt.type === 'error') {
+            gotDone = true
+            onError?.(evt.content || 'Unknown error')
+          } else {
+            if (evt.type === 'done') gotDone = true
+            onEvent(evt)
+          }
+        } catch { /* skip malformed */ }
+      }
+    }
+
+    // Fallback: if stream closed without done/error, finalize
+    if (!gotDone) onEvent({ type: 'done' })
+  } catch (err) {
+    onError?.(err instanceof Error ? err.message : 'Stream error')
+  }
+}

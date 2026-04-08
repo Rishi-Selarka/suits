@@ -1,0 +1,2 @@
+- [OpenRouter only](feedback_openrouter_only.md) — All LLM calls through OpenRouter, no Anthropic key
+- [Use Sonnet only](feedback_use_sonnet_only.md) — Claude Code should use Sonnet model, never Opus

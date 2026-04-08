@@ -230,6 +230,12 @@ class UserUpdateRequest(BaseModel):
     jurisdiction: str | None = None
 
 
+class NegotiateRequest(BaseModel):
+    message: str
+    document_id: str | None = None
+    rounds: int = Field(default=3, ge=1, le=5)
+
+
 class PaymentCreateRequest(BaseModel):
     plan: Literal["starter", "pro", "unlimited"]
 

@@ -168,6 +168,29 @@ class LLMClient:
             if delta:
                 yield delta
 
+    # ── Streaming call with full message history ─────────────────────────
+
+    async def call_stream_messages(
+        self,
+        config: ModelConfig,
+        messages: list[dict[str, str]],
+    ) -> AsyncGenerator[str, None]:
+        """Stream tokens from the LLM with a full message history."""
+        model_id = config.model_id
+
+        response = await self.client.chat.completions.create(
+            model=model_id,
+            max_tokens=config.max_tokens,
+            temperature=config.temperature,
+            messages=messages,
+            stream=True,
+        )
+
+        async for chunk in response:
+            delta = chunk.choices[0].delta.content if chunk.choices else None
+            if delta:
+                yield delta
+
     # ── Cleanup ──────────────────────────────────────────────────────────
 
     async def close(self) -> None:

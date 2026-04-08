@@ -32,6 +32,12 @@ class AgentModelsConfig(BaseModel):
     general_chat: ModelConfig = ModelConfig(
         model_id="openai/gpt-4o-mini", temperature=0.3
     )
+    negotiator_agent1: ModelConfig = ModelConfig(
+        model_id="google/gemini-2.0-flash-001", temperature=0.7, max_tokens=2048
+    )
+    negotiator_agent2: ModelConfig = ModelConfig(
+        model_id="openai/gpt-4o-mini", temperature=0.7, max_tokens=2048
+    )
 
 
 class Settings(BaseSettings):
