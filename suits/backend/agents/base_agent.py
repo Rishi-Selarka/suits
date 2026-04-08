@@ -167,13 +167,12 @@ class BaseAgent(ABC):
         """
         cleaned = text.strip()
 
-        # Strip markdown code fences
-        if cleaned.startswith("```"):
-            # Remove opening fence (possibly with language hint)
-            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
-            # Remove closing fence
-            if "```" in cleaned:
-                cleaned = cleaned.rsplit("```", 1)[0]
+        # Strip markdown code fences (handle ```json, ```JSON, ``` etc.)
+        fence_match = re.match(r"^```\w*\s*\n?", cleaned)
+        if fence_match:
+            cleaned = cleaned[fence_match.end():]
+            # Remove closing fence — may be on its own line or trailing
+            cleaned = re.sub(r"\n?```\s*$", "", cleaned)
             cleaned = cleaned.strip()
 
         # Direct parse

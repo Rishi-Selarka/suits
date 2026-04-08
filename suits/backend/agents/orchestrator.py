@@ -182,14 +182,17 @@ class AgentOrchestrator:
         # ── Wave 3: Advisor (needs all four) ─────────────────────────────
         yield self._make_event("advisor", "running")
 
-        advisor_result = await self._run_agent(
-            self.advisor,
-            clauses=clause_dicts,
-            classifications=classifications,
-            simplifications=simplifications,
-            risks=risks,
-            benchmarks=benchmarks,
-        )
+        try:
+            advisor_result = await self._run_agent(
+                self.advisor,
+                clauses=clause_dicts,
+                classifications=classifications,
+                simplifications=simplifications,
+                risks=risks,
+                benchmarks=benchmarks,
+            )
+        except Exception as exc:
+            advisor_result = exc
 
         advisor_ok = not isinstance(advisor_result, BaseException)
         yield self._make_event_from_result("advisor", advisor_result)
@@ -202,13 +205,16 @@ class AgentOrchestrator:
         if advisor_ok:
             yield self._make_event("verifier", "running")
 
-            verifier_result = await self._run_agent(
-                self.verifier,
-                clauses=clause_dicts,
-                advisor_output=advisor_result["data"],
-                risks=risks,
-                benchmarks=benchmarks,
-            )
+            try:
+                verifier_result = await self._run_agent(
+                    self.verifier,
+                    clauses=clause_dicts,
+                    advisor_output=advisor_result["data"],
+                    risks=risks,
+                    benchmarks=benchmarks,
+                )
+            except Exception as exc:
+                verifier_result = exc
 
             verifier_ok = not isinstance(verifier_result, BaseException)
             yield self._make_event_from_result("verifier", verifier_result)

@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment / .env file."""
 
     model_config = SettingsConfigDict(
-        env_file=os.path.join(os.path.dirname(__file__), "..", ".env"),
+        env_file=os.path.join(os.path.dirname(__file__), "..", "..", ".env"),
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
         extra="ignore",
