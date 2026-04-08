@@ -32,6 +32,7 @@ from models import (
     SSEEvent,
     UploadResponse,
     UserResponse,
+    UserUpdateRequest,
 )
 from reports.negotiation_brief import NegotiationBriefGenerator
 from storage import Storage
@@ -234,15 +235,31 @@ async def upload_document(request: Request, file: UploadFile = File(...)) -> Upl
 # ── POST /api/analyze/{document_id} (SSE) ───────────────────────────────────
 
 @app.post("/api/analyze/{document_id}")
-async def analyze_document(document_id: str, request: Request) -> EventSourceResponse:
+async def analyze_document(
+    document_id: str,
+    request: Request,
+    user_id: str = Query(default=""),
+) -> EventSourceResponse:
     """Run the full analysis pipeline and stream progress via SSE."""
     storage = _storage(request)
     llm_client = _llm(request)
     settings = _settings(request)
+    db = _db(request)
 
     meta = storage.get_metadata(document_id)
     if not meta:
         raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
+
+    # Quota check if user_id provided
+    if user_id:
+        quota = await db.check_quota(user_id)
+        if not quota.get("allowed", True):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Quota exceeded. Plan: {quota.get('plan', 'free')}, "
+                       f"used: {quota.get('used', 0)}/{quota.get('limit', 0)}. "
+                       "Upgrade your plan to continue.",
+            )
 
     # If already analysed, return cached result
     existing_result = storage.get_result(document_id)
@@ -322,6 +339,13 @@ async def analyze_document(document_id: str, request: Request) -> EventSourceRes
 
             async for event in orchestrator.run(document_id=document_id, clauses=clauses):
                 yield json.dumps(event, default=str)
+
+            # Record usage for quota tracking
+            if user_id:
+                try:
+                    await db.record_usage(user_id, document_id, action="analyze")
+                except Exception as usage_exc:
+                    logger.warning(f"Usage recording failed: {usage_exc}", extra={"status": "usage_error"})
 
             # Index clauses for RAG chat if embedding manager is available
             if request.app.state.embedding_manager:
@@ -717,10 +741,10 @@ async def get_user(user_id: str, request: Request) -> UserResponse:
 # ── PATCH /api/user/{user_id} ──────────────────────────────────────────────
 
 @app.patch("/api/user/{user_id}", response_model=UserResponse)
-async def update_user(user_id: str, request: Request, body: dict) -> UserResponse:
-    """Update user profile fields."""
+async def update_user(user_id: str, body: UserUpdateRequest, request: Request) -> UserResponse:
+    """Update user profile fields (plan/quota cannot be changed here)."""
     db = _db(request)
-    user = await db.update_user(user_id, **body)
+    user = await db.update_user(user_id, **body.model_dump(exclude_none=True))
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
     quota = await db.check_quota(user_id)
@@ -756,8 +780,6 @@ async def get_usage(user_id: str, request: Request) -> list[dict]:
 @app.post("/api/payments/create")
 async def create_payment(body: PaymentCreateRequest, request: Request, user_id: str = Query(...)) -> dict:
     """Create a payment order for plan upgrade."""
-    from database import PLAN_PRICES_PAISE
-
     db = _db(request)
     user = await db.get_user(user_id)
     if not user:

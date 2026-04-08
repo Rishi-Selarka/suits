@@ -221,6 +221,15 @@ class QuotaResponse(BaseModel):
     remaining: int
 
 
+class UserUpdateRequest(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    role: Literal["individual", "lawyer", "business", "student"] | None = None
+    organization: str | None = None
+    use_case: str | None = None
+    jurisdiction: str | None = None
+
+
 class PaymentCreateRequest(BaseModel):
     plan: Literal["starter", "pro", "unlimited"]
 

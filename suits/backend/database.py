@@ -83,6 +83,8 @@ class Database:
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._db = await aiosqlite.connect(self.db_path)
         self._db.row_factory = aiosqlite.Row
+        await self._db.execute("PRAGMA foreign_keys = ON")
+        await self._db.execute("PRAGMA journal_mode = WAL")
         await self._db.executescript(_SCHEMA)
         await self._db.commit()
         logger.info("Database connected", extra={"status": "db_ready", "path": self.db_path})
@@ -137,8 +139,9 @@ class Database:
         return dict(row) if row else None
 
     async def update_user(self, user_id: str, **fields: Any) -> dict[str, Any] | None:
-        allowed = {"name", "email", "role", "organization", "use_case", "jurisdiction", "plan", "documents_used"}
-        updates = {k: v for k, v in fields.items() if k in allowed}
+        # plan and documents_used are NOT user-editable — only changed via payments/usage tracking
+        allowed = {"name", "email", "role", "organization", "use_case", "jurisdiction"}
+        updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
         if not updates:
             return await self.get_user(user_id)
 
@@ -211,24 +214,32 @@ class Database:
         payment_id: str,
         razorpay_payment_id: str,
     ) -> dict[str, Any] | None:
+        # Verify payment exists and is in 'created' state (prevent double-completion)
+        cursor = await self.db.execute("SELECT * FROM payments WHERE id = ?", (payment_id,))
+        payment = await cursor.fetchone()
+        if not payment:
+            return None
+        payment = dict(payment)
+        if payment["status"] != "created":
+            logger.warning(
+                f"Payment {payment_id} already in status '{payment['status']}', skipping",
+                extra={"status": "payment_already_processed"},
+            )
+            return payment
+
         now = time.time()
         await self.db.execute(
             "UPDATE payments SET razorpay_payment_id = ?, status = 'paid', updated_at = ? WHERE id = ?",
             (razorpay_payment_id, now, payment_id),
         )
-
-        # Fetch payment to upgrade user plan
-        cursor = await self.db.execute("SELECT * FROM payments WHERE id = ?", (payment_id,))
-        payment = await cursor.fetchone()
-        if payment:
-            payment = dict(payment)
-            await self.db.execute(
-                "UPDATE users SET plan = ?, updated_at = ? WHERE id = ?",
-                (payment["plan"], now, payment["user_id"]),
-            )
-            await self.db.commit()
-            return payment
-        return None
+        await self.db.execute(
+            "UPDATE users SET plan = ?, updated_at = ? WHERE id = ?",
+            (payment["plan"], now, payment["user_id"]),
+        )
+        await self.db.commit()
+        payment["status"] = "paid"
+        payment["razorpay_payment_id"] = razorpay_payment_id
+        return payment
 
     async def get_user_payments(self, user_id: str) -> list[dict[str, Any]]:
         cursor = await self.db.execute(
