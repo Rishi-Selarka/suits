@@ -23,7 +23,7 @@ interface Message {
 
 interface ChatInterfaceProps {
   documentId?: string
-  onUploadRequest?: () => void
+  onFileSelect?: (file: File) => void
 }
 
 const QUICK_ACTIONS = [
@@ -37,7 +37,7 @@ const QUICK_ACTIONS = [
     label: 'Review a document',
     sublabel: 'Full AI analysis',
     icon: FileSearch,
-    action: 'review',
+    action: 'upload',
   },
   {
     label: 'Assess legal risks',
@@ -77,7 +77,7 @@ function TypingIndicator() {
   )
 }
 
-export default function ChatInterface({ documentId, onUploadRequest }: ChatInterfaceProps) {
+export default function ChatInterface({ documentId, onFileSelect }: ChatInterfaceProps) {
   const { user } = useUser()
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -113,12 +113,11 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
           }
           setMessages(prev => [...prev, assistantMsg])
         } else {
-          // No document loaded — guide the user
           const assistantMsg: Message = {
             id: crypto.randomUUID(),
             role: 'assistant',
             content:
-              "I'd love to help you analyze a legal document. Please upload a contract or document first using the attachment button or the upload option, and I'll provide a comprehensive analysis with risk assessments, clause breakdowns, and actionable insights.",
+              "I'd love to help you analyze a legal document. Please upload a contract or document first using the attachment button, and I'll provide a comprehensive analysis with risk assessments, clause breakdowns, and actionable insights.",
           }
           setMessages(prev => [...prev, assistantMsg])
         }
@@ -126,8 +125,7 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
         const errorMsg: Message = {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content:
-            'I encountered an error processing your request. Please try again or upload a new document.',
+          content: 'I encountered an error processing your request. Please try again.',
         }
         setMessages(prev => [...prev, errorMsg])
       } finally {
@@ -137,23 +135,26 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
     [documentId],
   )
 
+  const openFilePicker = () => fileInputRef.current?.click()
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    onFileSelect?.(file)
+    // Reset so the same file can be re-selected
+    e.target.value = ''
+  }
+
   const handleQuickAction = (action: string) => {
     if (action === 'upload') {
-      fileInputRef.current?.click()
+      openFilePicker()
       return
     }
     const prompts: Record<string, string> = {
-      review: 'I want to upload a document for a complete AI analysis. What types of documents can you analyze?',
       risk: 'What kind of legal risks can you identify in contracts?',
       negotiate: 'How can you help me with negotiation strategy for a contract?',
     }
     if (prompts[action]) handleSend(prompts[action])
-  }
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    onUploadRequest?.()
   }
 
   return (
@@ -164,16 +165,12 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
         type="file"
         accept=".pdf,.png,.jpg,.jpeg,.txt"
         className="hidden"
-        onChange={handleFileUpload}
+        onChange={handleFileChange}
       />
 
       {/* ── Messages area ── */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {isEmpty ? (
-          /* ── Empty state ── */
           <div className="flex flex-col items-center justify-center h-full px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -181,7 +178,6 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
               transition={{ duration: 0.7, ease: easeOutExpo }}
               className="text-center mb-12"
             >
-              {/* Animated icon */}
               <motion.div
                 className="mx-auto mb-6 w-16 h-16 rounded-2xl bg-surface-100 border border-surface-300/50 flex items-center justify-center"
                 initial={{ scale: 0.8 }}
@@ -194,12 +190,9 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
               <h1 className="text-3xl font-light text-surface-200 mb-2">
                 {getGreeting()}, {user.name}
               </h1>
-              <p className="text-surface-400 text-lg">
-                How can I help you today?
-              </p>
+              <p className="text-surface-400 text-lg">How can I help you today?</p>
             </motion.div>
 
-            {/* Quick action cards */}
             <motion.div
               variants={staggerContainer}
               initial="hidden"
@@ -208,7 +201,7 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
             >
               {QUICK_ACTIONS.map((action) => (
                 <motion.button
-                  key={action.action}
+                  key={action.label}
                   variants={staggerItem}
                   onClick={() => handleQuickAction(action.action)}
                   className="flex flex-col items-start gap-3 p-4 rounded-2xl border border-cream-300 bg-cream hover:border-surface-400/30 hover:shadow-md transition-all duration-300 text-left group"
@@ -219,18 +212,13 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
                     <action.icon className="w-4 h-4 text-surface-400 group-hover:text-surface-300" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-surface-200">
-                      {action.label}
-                    </p>
-                    <p className="text-xs text-cream-400 mt-0.5">
-                      {action.sublabel}
-                    </p>
+                    <p className="text-sm font-medium text-surface-200">{action.label}</p>
+                    <p className="text-xs text-cream-400 mt-0.5">{action.sublabel}</p>
                   </div>
                 </motion.button>
               ))}
             </motion.div>
 
-            {/* Feature hint */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -238,13 +226,10 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
               className="flex items-center gap-2 mt-8 text-cream-400"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span className="text-xs">
-                Powered by multi-agent AI with 6 specialized models
-              </span>
+              <span className="text-xs">Powered by multi-agent AI with 6 specialized models</span>
             </motion.div>
           </div>
         ) : (
-          /* ── Message list ── */
           <div className="max-w-4xl mx-auto py-6">
             <AnimatePresence>
               {messages.map((msg, i) => (
@@ -258,16 +243,14 @@ export default function ChatInterface({ documentId, onUploadRequest }: ChatInter
                 />
               ))}
             </AnimatePresence>
-
             {isLoading && <TypingIndicator />}
           </div>
         )}
       </div>
 
-      {/* ── Input ── */}
       <ChatInput
         onSend={handleSend}
-        onUpload={() => fileInputRef.current?.click()}
+        onUpload={openFilePicker}
         disabled={isLoading}
       />
     </div>
