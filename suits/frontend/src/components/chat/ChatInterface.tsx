@@ -11,7 +11,7 @@ import {
 import { useUser } from '@/context/UserContext'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
-import { chatWithDocument, type ChatResponse } from '@/api/client'
+import { chatWithDocument, generalChat, type ChatResponse } from '@/api/client'
 import { easeOutExpo, staggerContainer, staggerItem } from '@/lib/motion'
 
 interface Message {
@@ -103,24 +103,16 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
       setIsLoading(true)
 
       try {
-        if (documentId) {
-          const response = await chatWithDocument(documentId, content)
-          const assistantMsg: Message = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content: response.answer,
-            sources: response.source_clauses,
-          }
-          setMessages(prev => [...prev, assistantMsg])
-        } else {
-          const assistantMsg: Message = {
-            id: crypto.randomUUID(),
-            role: 'assistant',
-            content:
-              "I'd love to help you analyze a legal document. Please upload a contract or document first using the attachment button, and I'll provide a comprehensive analysis with risk assessments, clause breakdowns, and actionable insights.",
-          }
-          setMessages(prev => [...prev, assistantMsg])
+        const response = documentId
+          ? await chatWithDocument(documentId, content)
+          : await generalChat(content)
+        const assistantMsg: Message = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: response.answer,
+          sources: response.source_clauses,
         }
+        setMessages(prev => [...prev, assistantMsg])
       } catch (_) {
         const errorMsg: Message = {
           id: crypto.randomUUID(),

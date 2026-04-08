@@ -237,6 +237,11 @@ export async function chatWithDocument(
   return data
 }
 
+export async function generalChat(message: string): Promise<ChatResponse> {
+  const { data } = await api.post<ChatResponse>('/chat', { message })
+  return data
+}
+
 export async function downloadReport(
   documentId: string,
   exportType: string = 'negotiation_brief',
