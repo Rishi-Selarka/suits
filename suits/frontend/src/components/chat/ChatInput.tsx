@@ -48,12 +48,12 @@ export default function ChatInput({
   return (
     <div className="px-6 pb-6 pt-2">
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-end gap-2 bg-cream border border-cream-300 rounded-2xl px-4 py-3 shadow-sm focus-within:border-suits-500/40 focus-within:shadow-md transition-all duration-300">
+        <div className="flex items-center gap-2 bg-cream border border-cream-300 rounded-2xl px-4 py-3 shadow-sm focus-within:border-suits-500/40 focus-within:shadow-md transition-all duration-300">
           {/* Attachment */}
           {onUpload && (
             <button
               onClick={onUpload}
-              className="p-1.5 rounded-lg text-surface-400 hover:text-surface-300 hover:bg-cream-100 transition-colors shrink-0 mb-0.5"
+              className="p-1.5 rounded-lg text-surface-400 hover:text-surface-300 hover:bg-cream-100 transition-colors shrink-0"
             >
               <Paperclip className="w-[18px] h-[18px]" />
             </button>
@@ -76,7 +76,7 @@ export default function ChatInput({
             onClick={handleSend}
             disabled={!canSend}
             className={cn(
-              'p-2 rounded-xl transition-all duration-200 shrink-0 mb-0.5',
+              'p-2 rounded-xl transition-all duration-200 shrink-0',
               canSend
                 ? 'bg-surface-200 text-cream hover:bg-surface-300'
                 : 'bg-cream-200 text-cream-400 cursor-not-allowed',
