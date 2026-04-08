@@ -12,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class ModelConfig(BaseModel):
     """Per-agent model configuration (all via OpenRouter)."""
 
-    model_id: str = "openai/gpt-4o-mini"
+    model_id: str = "anthropic/claude-sonnet-4-5"
     max_tokens: int = 4096
     temperature: float = 0.1
     fallback_model_id: str | None = None
@@ -21,14 +21,11 @@ class ModelConfig(BaseModel):
 class AgentModelsConfig(BaseModel):
     """Model configuration for each agent."""
 
-    segmenter: ModelConfig = ModelConfig(model_id="openai/gpt-4o-mini")
-    classifier: ModelConfig = ModelConfig(model_id="openai/gpt-4o-mini")
+    segmenter: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
+    classifier: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
     simplifier: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
-    risk_analyzer: ModelConfig = ModelConfig(
-        model_id="openai/gpt-4o",
-        fallback_model_id="anthropic/claude-sonnet-4-5",
-    )
-    benchmark: ModelConfig = ModelConfig(model_id="openai/gpt-4o")
+    risk_analyzer: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
+    benchmark: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
     advisor: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
     verifier: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
     rag_chat: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
