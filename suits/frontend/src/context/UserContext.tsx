@@ -115,7 +115,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
       const idx = prev.findIndex(c => c.id === chat.id)
       if (idx >= 0) {
         const updated = [...prev]
-        updated[idx] = { ...updated[idx], ...chat }
+        updated[idx] = {
+          ...updated[idx],
+          ...chat,
+          // Preserve original title and creation time on updates
+          title: chat.title || updated[idx].title,
+          createdAt: updated[idx].createdAt,
+        }
         const [item] = updated.splice(idx, 1)
         return [item, ...updated].slice(0, 20)
       }

@@ -16,6 +16,7 @@ import {
   ChevronDown,
   PanelLeftClose,
   PanelLeft,
+  X,
 } from 'lucide-react'
 import { useUser } from '@/context/UserContext'
 import { cn } from '@/lib/utils'
@@ -160,12 +161,17 @@ export default function Sidebar({
                       'text-sm truncate flex-1',
                       isActive && 'font-medium',
                     )}>{chat.title}</span>
-                    {/* Delete button on hover */}
+                    {/* Delete button */}
                     <span
-                      onClick={(e) => { e.stopPropagation(); removeChat(chat.id) }}
-                      className="opacity-0 group-hover:opacity-100 text-surface-500 hover:text-red-500 transition-opacity p-0.5 rounded shrink-0"
+                      role="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeChat(chat.id)
+                        if (activeChatId === chat.id) onNewChat()
+                      }}
+                      className="opacity-0 group-hover:opacity-100 text-surface-500 hover:text-red-500 transition-all p-1 rounded-md hover:bg-red-500/10 shrink-0"
                     >
-                      <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                      <X className="w-3 h-3" />
                     </span>
                   </motion.button>
                 )
