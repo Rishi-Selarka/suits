@@ -285,9 +285,19 @@ export default function NegotiatorPage() {
     }
 
     const onError = (errMsg: string) => {
+      cancelAnimationFrame(rafRef.current)
+      // Flush any remaining tokens to the streaming message
+      const remaining = tokenBufferRef.current.content
+      tokenBufferRef.current.content = ''
+      const msgId = streamMsgIdRef.current
+      streamMsgIdRef.current = null
+      if (msgId) {
+        setMessages(prev =>
+          prev.map(m => m.id === msgId ? { ...m, content: m.content + remaining, isStreaming: false } : m),
+        )
+      }
       setStatus('error')
       setError(errMsg)
-      streamMsgIdRef.current = null
       setActiveAgent(null)
     }
 
