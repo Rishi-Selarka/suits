@@ -11,6 +11,8 @@ import {
   ChevronUp,
   Paperclip,
   X,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
@@ -74,6 +76,7 @@ export default function ToolLayout({ title, description, icon: Icon, children }:
 
   // Chat state
   const [chatOpen, setChatOpen] = useState(false)
+  const [chatFullscreen, setChatFullscreen] = useState(false)
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([])
   const [chatInput, setChatInput] = useState('')
   const [chatBusy, setChatBusy] = useState(false)
@@ -205,6 +208,7 @@ export default function ToolLayout({ title, description, icon: Icon, children }:
     setAgents({})
     setChatMessages([])
     setChatOpen(false)
+    setChatFullscreen(false)
   }
 
   // ── Chat token flush ──
@@ -286,7 +290,7 @@ export default function ToolLayout({ title, description, icon: Icon, children }:
   const totalAgents = AGENT_ORDER.length
 
   return (
-    <div className="flex flex-col h-screen bg-cream overflow-hidden">
+    <div className="flex flex-col h-screen bg-cream overflow-hidden relative">
       {/* ── Header ── */}
       <div className="shrink-0 px-6 pt-5 pb-4 border-b border-cream-200 bg-white/40">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
@@ -520,15 +524,18 @@ export default function ToolLayout({ title, description, icon: Icon, children }:
         )}
       </div>
 
-      {/* ── Chat panel (slides up from bottom) ── */}
+      {/* ── Chat panel (slides up from bottom, supports fullscreen) ── */}
       <AnimatePresence>
         {chatOpen && phase === 'done' && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 340, opacity: 1 }}
+            animate={{ height: chatFullscreen ? '100%' : 340, opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.35, ease: easeOutExpo }}
-            className="shrink-0 border-t-2 border-suits-200/50 bg-white flex flex-col overflow-hidden"
+            className={cn(
+              'border-t-2 border-suits-200/50 bg-white flex flex-col overflow-hidden',
+              chatFullscreen ? 'absolute inset-0 z-20 border-t-0' : 'shrink-0',
+            )}
           >
             {/* Chat header */}
             <div className="shrink-0 px-5 py-2.5 border-b border-cream-200 flex items-center justify-between bg-cream-100/30">
@@ -542,12 +549,21 @@ export default function ToolLayout({ title, description, icon: Icon, children }:
                   </span>
                 )}
               </div>
-              <button
-                onClick={() => setChatOpen(false)}
-                className="p-1 rounded-lg text-cream-400 hover:text-surface-300 hover:bg-cream-100 transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setChatFullscreen(f => !f)}
+                  className="p-1 rounded-lg text-cream-400 hover:text-surface-300 hover:bg-cream-100 transition-colors"
+                  title={chatFullscreen ? 'Minimize' : 'Fullscreen'}
+                >
+                  {chatFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => { setChatOpen(false); setChatFullscreen(false) }}
+                  className="p-1 rounded-lg text-cream-400 hover:text-surface-300 hover:bg-cream-100 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Chat messages */}
@@ -562,6 +578,7 @@ export default function ToolLayout({ title, description, icon: Icon, children }:
                   key={msg.id}
                   className={cn(
                     'flex gap-2.5',
+                    chatFullscreen ? 'max-w-3xl mx-auto w-full' : '',
                     msg.role === 'user' ? 'justify-end' : '',
                   )}
                 >
@@ -582,7 +599,7 @@ export default function ToolLayout({ title, description, icon: Icon, children }:
                 </div>
               ))}
               {chatBusy && chatMessages[chatMessages.length - 1]?.role === 'user' && (
-                <div className="flex gap-2.5">
+                <div className={cn('flex gap-2.5', chatFullscreen && 'max-w-3xl mx-auto w-full')}>
                   <img src="/images/suits-logo.png" alt="Suits AI" className="w-6 h-6 object-contain shrink-0" />
                   <div className="bg-cream border border-cream-200 rounded-2xl rounded-tl-md px-3.5 py-2.5">
                     <div className="flex items-center gap-1.5">
@@ -596,8 +613,11 @@ export default function ToolLayout({ title, description, icon: Icon, children }:
             </div>
 
             {/* Chat input */}
-            <div className="shrink-0 px-4 py-3 border-t border-cream-200 bg-white">
-              <div className="flex items-end gap-2 bg-cream border border-cream-200 rounded-xl px-3 py-2 focus-within:border-suits-400/40 transition-colors">
+            <div className={cn('shrink-0 px-4 py-3 border-t border-cream-200 bg-white', chatFullscreen && 'px-6 py-4')}>
+              <div className={cn(
+                'flex items-center gap-2 bg-cream border border-cream-200 rounded-xl px-3 py-2 focus-within:border-suits-400/40 transition-colors',
+                chatFullscreen && 'max-w-3xl mx-auto',
+              )}>
                 <textarea
                   ref={chatTextareaRef}
                   value={chatInput}
@@ -606,7 +626,7 @@ export default function ToolLayout({ title, description, icon: Icon, children }:
                   placeholder="Ask a question..."
                   disabled={chatBusy}
                   rows={1}
-                  className="flex-1 bg-transparent text-surface-200 placeholder:text-cream-400 text-sm leading-relaxed outline-none resize-none disabled:opacity-50"
+                  className="flex-1 bg-transparent text-surface-200 placeholder:text-cream-400 text-sm leading-relaxed outline-none resize-none overflow-hidden disabled:opacity-50"
                 />
                 <motion.button
                   onClick={handleChatSend}
