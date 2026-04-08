@@ -188,31 +188,33 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
         tokenBufferRef.current = ''
         streamMsgIdRef.current = null
 
+        // Compute final messages (updater runs synchronously)
+        let finalMessages: Message[] = []
         setMessages(prev => {
-          const updated = prev.map(m =>
+          finalMessages = prev.map(m =>
             m.id === assistantId
               ? { ...m, content: m.content + remaining, sources }
               : m,
           )
-
-          // Persist messages to chat history (upsert)
-          const isFirstSave = !chatSavedRef.current
-          chatSavedRef.current = true
-          addChat({
-            id: chatId,
-            title: isFirstSave
-              ? content.slice(0, 50) + (content.length > 50 ? '...' : '')
-              : chatHistory.find(c => c.id === chatId)?.title || content.slice(0, 50),
-            documentId,
-            createdAt: isFirstSave ? Date.now() : (chatHistory.find(c => c.id === chatId)?.createdAt || Date.now()),
-            lastMessage: content,
-            messages: updated.map(m => ({ id: m.id, role: m.role, content: m.content })),
-          })
-
-          return updated
+          return finalMessages
         })
         setStreamingId(null)
         setIsThinking(false)
+
+        // Persist to chat history — outside setMessages to avoid side-effects in updater
+        const isFirstSave = !chatSavedRef.current
+        chatSavedRef.current = true
+        addChat({
+          id: chatId,
+          // Empty title on updates → upsert preserves existing title
+          title: isFirstSave
+            ? content.slice(0, 50) + (content.length > 50 ? '...' : '')
+            : '',
+          documentId,
+          createdAt: Date.now(),
+          lastMessage: content,
+          messages: finalMessages.map(m => ({ id: m.id, role: m.role, content: m.content })),
+        })
       }
 
       const onError = (error: string) => {
