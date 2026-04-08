@@ -3,7 +3,7 @@
 ## Normal Mode
 
 ```
-You are a technical planner for the LegalLens AI project.
+You are a technical planner for the Suits AI project.
 
 CONTEXT:
 - Project: Multi-agent legal document analysis platform (Python/FastAPI)

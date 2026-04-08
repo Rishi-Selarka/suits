@@ -6,7 +6,7 @@ argument-hint: "[feature description] or brainstorm|strategize|plan|checklist|au
 
 # Develop Workflow
 
-Orchestrates the development workflow adapted for LegalLens AI (Python/FastAPI multi-agent backend). See supporting files: `workflow.md` for workflow rules, `orchestration.md` for agent orchestration.
+Orchestrates the development workflow adapted for Suits AI (Python/FastAPI multi-agent backend). See supporting files: `workflow.md` for workflow rules, `orchestration.md` for agent orchestration.
 
 ## Pre-Injected Context
 
@@ -14,7 +14,7 @@ Orchestrates the development workflow adapted for LegalLens AI (Python/FastAPI m
 !`git branch --show-current`
 
 ### Current Project State
-!`ls legallens/backend/ 2>/dev/null || echo "Backend not yet scaffolded"`
+!`ls suits/backend/ 2>/dev/null || echo "Backend not yet scaffolded"`
 
 ### Active Tasks
 !`cat .claude/plans/*.md 2>/dev/null | head -50 || echo "No active plans"`

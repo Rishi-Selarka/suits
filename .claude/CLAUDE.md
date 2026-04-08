@@ -1,7 +1,7 @@
-# LegalLens AI — Project Rules
+# Suits AI — Project Rules
 
 ## Project Overview
-LegalLens AI is a multi-agent, multi-model legal document analysis platform. It uses 6 specialized AI agents orchestrated in a DAG to analyze legal documents and produce risk assessments, plain-English simplifications, benchmark comparisons, negotiation playbooks, and a verified final report with cross-clause interaction checks.
+Suits AI is a multi-agent, multi-model legal document analysis platform. It uses 6 specialized AI agents orchestrated in a DAG to analyze legal documents and produce risk assessments, plain-English simplifications, benchmark comparisons, negotiation playbooks, and a verified final report with cross-clause interaction checks.
 
 ## Tech Stack
 - **Backend**: Python 3.11+ / FastAPI
@@ -30,9 +30,9 @@ LegalLens AI is a multi-agent, multi-model legal document analysis platform. It 
 
 ## File Layout
 ```
-legallens/backend/     — All backend code
-legallens/data/        — Runtime data (uploads, results, metadata)
-legallens/sample_docs/ — Demo documents
+suits/backend/     — All backend code
+suits/data/        — Runtime data (uploads, results, metadata)
+suits/sample_docs/ — Demo documents
 ```
 
 ## Key Rules
@@ -45,13 +45,13 @@ legallens/sample_docs/ — Demo documents
 - SSE events must include agent name, status, timing_ms, and model_used
 
 ## Testing
-- Run backend: `cd legallens/backend && uvicorn main:app --reload --port 8000`
+- Run backend: `cd suits/backend && uvicorn main:app --reload --port 8000`
 - API docs: http://localhost:8000/docs
 - Test upload: POST /api/upload with a PDF
 - Test analysis: POST /api/analyze/{document_id} (SSE stream)
 
 ## Important Files
 - `suits.md` — Complete technical specification (source of truth)
-- `legallens/backend/llm_client.py` — Multi-provider LLM abstraction (critical)
-- `legallens/backend/agents/orchestrator.py` — DAG execution engine (critical)
-- `legallens/backend/config.py` — All configuration (critical)
+- `suits/backend/llm_client.py` — Multi-provider LLM abstraction (critical)
+- `suits/backend/agents/orchestrator.py` — DAG execution engine (critical)
+- `suits/backend/config.py` — All configuration (critical)

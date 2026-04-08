@@ -12,7 +12,7 @@ venv/
 
 # Runtime data
 data/
-legallens/data/
+suits/data/
 
 # IDE
 .vscode/
