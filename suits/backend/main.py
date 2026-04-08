@@ -682,7 +682,7 @@ async def health_check(request: Request) -> dict:
         cfg = getattr(agent_models, agent_name, None)
         if cfg:
             models_info[agent_name] = {
-                "provider": cfg.provider,
+                "provider": "openrouter",
                 "model_id": cfg.model_id,
             }
 

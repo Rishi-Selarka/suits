@@ -10,9 +10,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class ModelConfig(BaseModel):
-    """Per-agent model configuration."""
+    """Per-agent model configuration (all via OpenRouter)."""
 
-    provider: Literal["anthropic", "openrouter"] = "openrouter"
     model_id: str = "openai/gpt-4o-mini"
     max_tokens: int = 4096
     temperature: float = 0.1
@@ -22,32 +21,17 @@ class ModelConfig(BaseModel):
 class AgentModelsConfig(BaseModel):
     """Model configuration for each agent."""
 
-    segmenter: ModelConfig = ModelConfig(
-        provider="openrouter", model_id="openai/gpt-4o-mini"
-    )
-    classifier: ModelConfig = ModelConfig(
-        provider="openrouter", model_id="openai/gpt-4o-mini"
-    )
-    simplifier: ModelConfig = ModelConfig(
-        provider="openrouter", model_id="anthropic/claude-sonnet-4-5"
-    )
+    segmenter: ModelConfig = ModelConfig(model_id="openai/gpt-4o-mini")
+    classifier: ModelConfig = ModelConfig(model_id="openai/gpt-4o-mini")
+    simplifier: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
     risk_analyzer: ModelConfig = ModelConfig(
-        provider="openrouter",
         model_id="openai/gpt-4o",
         fallback_model_id="anthropic/claude-sonnet-4-5",
     )
-    benchmark: ModelConfig = ModelConfig(
-        provider="openrouter", model_id="openai/gpt-4o"
-    )
-    advisor: ModelConfig = ModelConfig(
-        provider="openrouter", model_id="anthropic/claude-opus-4-5"
-    )
-    verifier: ModelConfig = ModelConfig(
-        provider="openrouter", model_id="anthropic/claude-opus-4-5"
-    )
-    rag_chat: ModelConfig = ModelConfig(
-        provider="openrouter", model_id="anthropic/claude-sonnet-4-5"
-    )
+    benchmark: ModelConfig = ModelConfig(model_id="openai/gpt-4o")
+    advisor: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
+    verifier: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
+    rag_chat: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
 
 
 class Settings(BaseSettings):
@@ -60,8 +44,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Required API keys
-    anthropic_api_key: str = ""
+    # API key (all LLM calls go through OpenRouter)
     openrouter_api_key: str = ""
 
     # Agent model configs (overridable via env)
