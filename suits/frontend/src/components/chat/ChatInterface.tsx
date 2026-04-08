@@ -91,8 +91,10 @@ function ThinkingIndicator() {
 }
 
 export default function ChatInterface({ documentId, onFileSelect }: ChatInterfaceProps) {
-  const { user } = useUser()
+  const { user, addChat } = useUser()
   const [messages, setMessages] = useState<Message[]>([])
+  const [chatId] = useState(() => crypto.randomUUID())
+  const chatSavedRef = useRef(false)
   const [isThinking, setIsThinking] = useState(false)
   const [streamingId, setStreamingId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -179,6 +181,18 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
         )
         setStreamingId(null)
         setIsThinking(false)
+
+        // Save to chat history on first exchange
+        if (!chatSavedRef.current) {
+          chatSavedRef.current = true
+          addChat({
+            id: chatId,
+            title: content.slice(0, 50) + (content.length > 50 ? '...' : ''),
+            documentId,
+            createdAt: Date.now(),
+            lastMessage: content,
+          })
+        }
       }
 
       const onError = (error: string) => {
