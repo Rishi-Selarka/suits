@@ -16,6 +16,7 @@ from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 
 from config import get_settings
+from database import Database
 from logging_config import get_logger, setup_logging
 from llm_client import LLMClient
 from models import (
@@ -24,8 +25,13 @@ from models import (
     ChatResponse,
     CompareRequest,
     DocumentMetadata,
+    OnboardingRequest,
+    PaymentCreateRequest,
+    PaymentVerifyRequest,
+    QuotaResponse,
     SSEEvent,
     UploadResponse,
+    UserResponse,
 )
 from reports.negotiation_brief import NegotiationBriefGenerator
 from storage import Storage
@@ -70,6 +76,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.llm_client = LLMClient(settings)
     app.state.report_generator = NegotiationBriefGenerator()
 
+    # Database
+    app.state.db = Database()
+    await app.state.db.connect()
+
     # Lazy-init RAG components (may not be present yet)
     app.state.embedding_manager = None
     app.state.conversation_memory: dict[str, object] = {}
@@ -87,6 +97,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     # Shutdown
+    await app.state.db.close()
     await app.state.llm_client.close()
     logger.info("Suits AI shut down", extra={"status": "shutdown"})
 
@@ -127,6 +138,10 @@ def _llm(request: Request) -> LLMClient:
 
 def _settings(request: Request):  # noqa: ANN202
     return request.app.state.settings
+
+
+def _db(request: Request) -> Database:
+    return request.app.state.db  # type: ignore[no-any-return]
 
 
 def _resolve_content_type(upload: UploadFile) -> str:
@@ -663,4 +678,122 @@ async def health_check(request: Request) -> dict:
             "max_retries": settings.max_retries,
             "cors_origins": settings.cors_origins,
         },
+    }
+
+
+# ── POST /api/onboard ──────────────────────────────────────────────────────
+
+@app.post("/api/onboard", response_model=UserResponse)
+async def onboard_user(body: OnboardingRequest, request: Request) -> UserResponse:
+    """Create or retrieve a user during onboarding."""
+    db = _db(request)
+
+    user = await db.create_user(
+        name=body.name,
+        email=body.email,
+        role=body.role,
+        organization=body.organization,
+        use_case=body.use_case,
+        jurisdiction=body.jurisdiction,
+    )
+
+    quota = await db.check_quota(user["id"])
+    return UserResponse(**user, quota=quota)
+
+
+# ── GET /api/user/{user_id} ────────────────────────────────────────────────
+
+@app.get("/api/user/{user_id}", response_model=UserResponse)
+async def get_user(user_id: str, request: Request) -> UserResponse:
+    """Get user profile and quota info."""
+    db = _db(request)
+    user = await db.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    quota = await db.check_quota(user_id)
+    return UserResponse(**user, quota=quota)
+
+
+# ── PATCH /api/user/{user_id} ──────────────────────────────────────────────
+
+@app.patch("/api/user/{user_id}", response_model=UserResponse)
+async def update_user(user_id: str, request: Request, body: dict) -> UserResponse:
+    """Update user profile fields."""
+    db = _db(request)
+    user = await db.update_user(user_id, **body)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    quota = await db.check_quota(user_id)
+    return UserResponse(**user, quota=quota)
+
+
+# ── GET /api/user/{user_id}/quota ──────────────────────────────────────────
+
+@app.get("/api/user/{user_id}/quota", response_model=QuotaResponse)
+async def check_quota(user_id: str, request: Request) -> QuotaResponse:
+    """Check user's remaining document quota."""
+    db = _db(request)
+    quota = await db.check_quota(user_id)
+    if not quota.get("allowed") and quota.get("reason") == "User not found":
+        raise HTTPException(status_code=404, detail="User not found.")
+    return QuotaResponse(**quota)
+
+
+# ── GET /api/user/{user_id}/usage ──────────────────────────────────────────
+
+@app.get("/api/user/{user_id}/usage")
+async def get_usage(user_id: str, request: Request) -> list[dict]:
+    """Get user's document analysis history."""
+    db = _db(request)
+    user = await db.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return await db.get_usage(user_id)
+
+
+# ── POST /api/payments/create ──────────────────────────────────────────────
+
+@app.post("/api/payments/create")
+async def create_payment(body: PaymentCreateRequest, request: Request, user_id: str = Query(...)) -> dict:
+    """Create a payment order for plan upgrade."""
+    from database import PLAN_PRICES_PAISE
+
+    db = _db(request)
+    user = await db.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    payment = await db.create_payment(user_id=user_id, plan=body.plan)
+
+    return {
+        "payment_id": payment["id"],
+        "amount_paise": payment["amount_paise"],
+        "currency": "INR",
+        "plan": body.plan,
+        "user_id": user_id,
+    }
+
+
+# ── POST /api/payments/verify ─────────────────────────────────────────────
+
+@app.post("/api/payments/verify")
+async def verify_payment(body: PaymentVerifyRequest, request: Request) -> dict:
+    """Verify payment and upgrade user plan."""
+    db = _db(request)
+
+    payment = await db.complete_payment(
+        payment_id=body.payment_id,
+        razorpay_payment_id=body.razorpay_payment_id,
+    )
+
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found.")
+
+    user = await db.get_user(payment["user_id"])
+    quota = await db.check_quota(payment["user_id"])
+
+    return {
+        "status": "success",
+        "plan": payment["plan"],
+        "user": UserResponse(**user, quota=quota).model_dump() if user else None,
     }
