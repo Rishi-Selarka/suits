@@ -81,19 +81,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.db = Database()
     await app.state.db.connect()
 
-    # Lazy-init RAG components (may not be present yet)
+    # RAG components — load embedding model in background so server starts fast
     app.state.embedding_manager = None
-    app.state.conversation_memory: dict[str, object] = {}
+    app.state.conversation_memory = None
 
-    try:
-        from rag.embeddings import EmbeddingManager  # type: ignore[import-untyped]
-        from rag.conversation import ConversationMemory  # type: ignore[import-untyped]
+    async def _load_rag() -> None:
+        try:
+            from rag.embeddings import EmbeddingManager  # type: ignore[import-untyped]
+            from rag.conversation import ConversationMemory  # type: ignore[import-untyped]
 
-        app.state.embedding_manager = EmbeddingManager()
-        app.state.conversation_memory = ConversationMemory()
-        logger.info("EmbeddingManager initialised", extra={"status": "rag_ready"})
-    except Exception:
-        logger.warning("EmbeddingManager not available — RAG chat disabled", extra={"status": "rag_skip"})
+            # Run heavy model loading in a thread so it doesn't block the event loop
+            emb = await asyncio.to_thread(EmbeddingManager)
+            app.state.embedding_manager = emb
+            app.state.conversation_memory = ConversationMemory()
+            logger.info("EmbeddingManager initialised", extra={"status": "rag_ready"})
+        except Exception:
+            logger.warning("EmbeddingManager not available — RAG chat disabled", extra={"status": "rag_skip"})
+
+    asyncio.create_task(_load_rag())
 
     yield
 
@@ -496,6 +501,33 @@ async def chat_with_document(
         memory.add_message(document_id, "assistant", llm_response.text)
 
     return ChatResponse(answer=llm_response.text, source_clauses=[])
+
+
+# ── POST /api/chat (general legal advisor — no document needed) ────────────
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def general_chat(body: ChatRequest, request: Request) -> ChatResponse:
+    """General legal advisor chat — no document upload required."""
+    llm_client = _llm(request)
+    settings = _settings(request)
+
+    if not body.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
+
+    chat_config = settings.agent_models.rag_chat
+
+    try:
+        llm_response = await llm_client.call_with_retry(
+            config=chat_config,
+            system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
+            user_message=body.message,
+        )
+        return ChatResponse(answer=llm_response.text, source_clauses=[])
+    except Exception as exc:
+        logger.error(f"General chat failed: {exc}", extra={"status": "chat_error"})
+        raise HTTPException(status_code=500, detail="Failed to generate response. Please try again.") from exc
 
 
 # ── GET /api/report/{document_id} ───────────────────────────────────────────
