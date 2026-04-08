@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import AsyncIterator
 
 import openai
 
@@ -139,6 +140,33 @@ class LLMClient:
                 )
 
         raise last_exc or RuntimeError("LLM call failed with no exception captured")
+
+    # ── Streaming call ──────────────────────────────────────────────────
+
+    async def call_stream(
+        self,
+        config: ModelConfig,
+        system_prompt: str,
+        user_message: str,
+    ) -> AsyncIterator[str]:
+        """Stream tokens from the LLM via OpenRouter."""
+        model_id = config.model_id
+
+        response = await self.client.chat.completions.create(
+            model=model_id,
+            max_tokens=config.max_tokens,
+            temperature=config.temperature,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            stream=True,
+        )
+
+        async for chunk in response:
+            delta = chunk.choices[0].delta.content if chunk.choices else None
+            if delta:
+                yield delta
 
     # ── Cleanup ──────────────────────────────────────────────────────────
 

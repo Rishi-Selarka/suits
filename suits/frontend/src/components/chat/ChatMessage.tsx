@@ -16,6 +16,26 @@ interface ChatMessageProps {
   sources?: Source[]
   userName?: string
   index: number
+  isStreaming?: boolean
+}
+
+function FormattedContent({ text, isStreaming }: { text: string; isStreaming?: boolean }) {
+  return (
+    <div className="text-[15px] leading-relaxed whitespace-pre-wrap">
+      {text.split(/(\*\*.*?\*\*)/g).map((part, i) =>
+        part.startsWith('**') && part.endsWith('**') ? (
+          <strong key={i} className="font-semibold">
+            {part.slice(2, -2)}
+          </strong>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+      {isStreaming && (
+        <span className="inline-block w-[2px] h-[1.1em] bg-suits-500 ml-0.5 align-middle streaming-cursor" />
+      )}
+    </div>
+  )
 }
 
 export default function ChatMessage({
@@ -24,6 +44,7 @@ export default function ChatMessage({
   sources,
   userName,
   index,
+  isStreaming,
 }: ChatMessageProps) {
   const [copied, setCopied] = useState(false)
   const isUser = role === 'user'
@@ -62,34 +83,25 @@ export default function ChatMessage({
               : 'bg-cream border border-cream-200 text-surface-200 rounded-tl-md',
           )}
         >
-          {/* Content - render with basic formatting */}
-          <div className="text-[15px] leading-relaxed whitespace-pre-wrap">
-            {content.split(/(\*\*.*?\*\*)/g).map((part, i) =>
-              part.startsWith('**') && part.endsWith('**') ? (
-                <strong key={i} className="font-semibold">
-                  {part.slice(2, -2)}
-                </strong>
-              ) : (
-                <span key={i}>{part}</span>
-              ),
-            )}
-          </div>
+          <FormattedContent text={content} isStreaming={isStreaming} />
 
-          {/* Copy button */}
-          <button
-            onClick={handleCopy}
-            className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-black/5 transition-all"
-          >
-            {copied ? (
-              <Check className="w-3.5 h-3.5 text-risk-low" />
-            ) : (
-              <Copy className={cn('w-3.5 h-3.5', isUser ? 'text-surface-500' : 'text-surface-400')} />
-            )}
-          </button>
+          {/* Copy button — hide while streaming */}
+          {!isStreaming && (
+            <button
+              onClick={handleCopy}
+              className="absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-black/5 transition-all"
+            >
+              {copied ? (
+                <Check className="w-3.5 h-3.5 text-risk-low" />
+              ) : (
+                <Copy className={cn('w-3.5 h-3.5', isUser ? 'text-surface-500' : 'text-surface-400')} />
+              )}
+            </button>
+          )}
         </div>
 
-        {/* Sources */}
-        {!isUser && sources && sources.length > 0 && (
+        {/* Sources — show after streaming done */}
+        {!isUser && !isStreaming && sources && sources.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}

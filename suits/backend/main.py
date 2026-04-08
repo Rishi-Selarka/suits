@@ -516,7 +516,7 @@ async def general_chat(body: ChatRequest, request: Request) -> ChatResponse:
 
     from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
 
-    chat_config = settings.agent_models.rag_chat
+    chat_config = settings.agent_models.general_chat
 
     try:
         llm_response = await llm_client.call_with_retry(
@@ -528,6 +528,104 @@ async def general_chat(body: ChatRequest, request: Request) -> ChatResponse:
     except Exception as exc:
         logger.error(f"General chat failed: {exc}", extra={"status": "chat_error"})
         raise HTTPException(status_code=500, detail="Failed to generate response. Please try again.") from exc
+
+
+# ── POST /api/chat/stream (streaming general chat) ─────────────────────────
+
+@app.post("/api/chat/stream")
+async def general_chat_stream(body: ChatRequest, request: Request) -> EventSourceResponse:
+    """Streaming general legal advisor chat via SSE."""
+    llm_client = _llm(request)
+    settings = _settings(request)
+
+    if not body.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
+
+    chat_config = settings.agent_models.general_chat
+
+    async def event_generator() -> AsyncGenerator[dict, None]:
+        try:
+            async for token in llm_client.call_stream(
+                config=chat_config,
+                system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
+                user_message=body.message,
+            ):
+                yield {"data": json.dumps({"type": "token", "content": token})}
+            yield {"data": json.dumps({"type": "done", "source_clauses": []})}
+        except Exception as exc:
+            logger.error(f"Stream chat failed: {exc}", extra={"status": "chat_error"})
+            yield {"data": json.dumps({"type": "error", "content": "Failed to generate response."})}
+
+    return EventSourceResponse(event_generator())
+
+
+# ── POST /api/chat/{document_id}/stream (streaming document chat) ──────────
+
+@app.post("/api/chat/{document_id}/stream")
+async def document_chat_stream(
+    document_id: str, body: ChatRequest, request: Request
+) -> EventSourceResponse:
+    """Streaming document-aware chat via SSE."""
+    llm_client = _llm(request)
+    settings = _settings(request)
+    storage = _storage(request)
+
+    if not body.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    meta = storage.get_metadata(document_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
+
+    result = storage.get_result(document_id)
+    chat_config = settings.agent_models.rag_chat
+
+    async def event_generator() -> AsyncGenerator[dict, None]:
+        try:
+            if result:
+                retriever = request.app.state.retriever
+                context_clauses = retriever.retrieve(document_id, body.message, top_k=5)
+
+                context_block = "\n\n".join(
+                    f"[Clause {c['clause_id']} | Page {c['page_number']}]\n{c['text']}"
+                    for c in context_clauses
+                )
+                augmented_message = (
+                    f"RELEVANT CLAUSES:\n{context_block}\n\n"
+                    f"USER QUESTION:\n{body.message}"
+                )
+
+                source_clauses = [
+                    {"clause_id": c["clause_id"], "text": c["text"][:200], "page": c["page_number"]}
+                    for c in context_clauses
+                ]
+
+                from prompts.templates import RAG_CHAT_PROMPT
+
+                async for token in llm_client.call_stream(
+                    config=chat_config,
+                    system_prompt=RAG_CHAT_PROMPT,
+                    user_message=augmented_message,
+                ):
+                    yield {"data": json.dumps({"type": "token", "content": token})}
+                yield {"data": json.dumps({"type": "done", "source_clauses": source_clauses})}
+            else:
+                from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
+
+                async for token in llm_client.call_stream(
+                    config=chat_config,
+                    system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
+                    user_message=body.message,
+                ):
+                    yield {"data": json.dumps({"type": "token", "content": token})}
+                yield {"data": json.dumps({"type": "done", "source_clauses": []})}
+        except Exception as exc:
+            logger.error(f"Stream doc chat failed: {exc}", extra={"status": "chat_error"})
+            yield {"data": json.dumps({"type": "error", "content": "Failed to generate response."})}
+
+    return EventSourceResponse(event_generator())
 
 
 # ── GET /api/report/{document_id} ───────────────────────────────────────────
