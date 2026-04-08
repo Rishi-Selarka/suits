@@ -263,23 +263,6 @@ export default function Sidebar({
 
       {/* ── Footer ── */}
       <div className="p-3 border-t border-surface-300/30 shrink-0">
-        {/* Settings */}
-        <button
-          onClick={() => onViewChange('settings')}
-          className={cn(
-            'w-full flex items-center gap-2.5 rounded-lg transition-colors duration-150 mb-1',
-            collapsed ? 'p-2.5 justify-center' : 'px-2.5 py-2',
-            activeView === 'settings'
-              ? 'bg-surface-200 text-surface-900'
-              : 'text-surface-600 hover:bg-surface-200/60 hover:text-surface-800',
-          )}
-          title={collapsed ? 'Settings' : undefined}
-        >
-          <Settings className="w-4 h-4 shrink-0" />
-          {!collapsed && <span className="text-sm">Settings</span>}
-        </button>
-
-        {/* User info */}
         <div
           className={cn(
             'flex items-center gap-2.5 rounded-lg p-2',
@@ -292,14 +275,28 @@ export default function Sidebar({
             </span>
           </div>
           {!collapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-surface-800 truncate">
-                {user.name || 'User'}
-              </p>
-              <p className="text-xs text-surface-500 truncate capitalize">
-                {user.profession || 'Member'}
-              </p>
-            </div>
+            <>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-surface-800 truncate">
+                  {user.name || 'User'}
+                </p>
+                <p className="text-xs text-surface-500 truncate capitalize">
+                  {user.profession || 'Member'}
+                </p>
+              </div>
+              <button
+                onClick={() => onViewChange('settings')}
+                className={cn(
+                  'p-1.5 rounded-lg transition-colors duration-150 shrink-0',
+                  activeView === 'settings'
+                    ? 'bg-surface-200 text-surface-900'
+                    : 'text-surface-500 hover:bg-surface-200/60 hover:text-surface-800',
+                )}
+                title="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+            </>
           )}
         </div>
       </div>
