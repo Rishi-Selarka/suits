@@ -44,7 +44,9 @@ _EXPORT_TITLES: dict[str, str] = {
 
 def _safe(text: str, max_len: int = 0) -> str:
     """Sanitise text for fpdf2 (replace unsupported chars, optionally truncate)."""
-    cleaned = text.encode("latin-1", errors="replace").decode("latin-1")
+    # Strip control characters that break fpdf2 layout
+    cleaned = text.replace("\r", "").replace("\t", "    ")
+    cleaned = cleaned.encode("latin-1", errors="replace").decode("latin-1")
     if max_len and len(cleaned) > max_len:
         return cleaned[: max_len - 3] + "..."
     return cleaned
@@ -108,27 +110,48 @@ class NegotiationBriefGenerator:
             b.clause_id: b for b in analysis.benchmarks
         }
 
-        if export_type == "negotiation_brief":
-            self._section_executive_summary(pdf, analysis)
-            self._section_critical_issues(pdf, analysis)
-            self._section_missing_protections(pdf, analysis)
-            self._section_positive_aspects(pdf, analysis)
-            self._section_negotiation_checklist(pdf, analysis)
-        elif export_type == "risk_summary":
-            self._section_executive_summary(pdf, analysis)
-            self._section_risk_score(pdf, analysis)
-            self._section_critical_issues(pdf, analysis)
-            self._section_missing_protections(pdf, analysis)
-        elif export_type == "clause_report":
-            self._section_clause_table(pdf, analysis, class_map, risk_map, bench_map)
-        elif export_type == "full_bundle":
-            self._section_executive_summary(pdf, analysis)
-            self._section_risk_score(pdf, analysis)
-            self._section_critical_issues(pdf, analysis)
-            self._section_clause_table(pdf, analysis, class_map, risk_map, bench_map)
-            self._section_missing_protections(pdf, analysis)
-            self._section_positive_aspects(pdf, analysis)
-            self._section_negotiation_checklist(pdf, analysis)
+        section_map = {
+            "negotiation_brief": [
+                ("executive_summary", lambda: self._section_executive_summary(pdf, analysis)),
+                ("critical_issues", lambda: self._section_critical_issues(pdf, analysis)),
+                ("missing_protections", lambda: self._section_missing_protections(pdf, analysis)),
+                ("positive_aspects", lambda: self._section_positive_aspects(pdf, analysis)),
+                ("negotiation_checklist", lambda: self._section_negotiation_checklist(pdf, analysis)),
+            ],
+            "risk_summary": [
+                ("executive_summary", lambda: self._section_executive_summary(pdf, analysis)),
+                ("risk_score", lambda: self._section_risk_score(pdf, analysis)),
+                ("critical_issues", lambda: self._section_critical_issues(pdf, analysis)),
+                ("missing_protections", lambda: self._section_missing_protections(pdf, analysis)),
+            ],
+            "clause_report": [
+                ("clause_table", lambda: self._section_clause_table(pdf, analysis, class_map, risk_map, bench_map)),
+            ],
+            "full_bundle": [
+                ("executive_summary", lambda: self._section_executive_summary(pdf, analysis)),
+                ("risk_score", lambda: self._section_risk_score(pdf, analysis)),
+                ("critical_issues", lambda: self._section_critical_issues(pdf, analysis)),
+                ("clause_table", lambda: self._section_clause_table(pdf, analysis, class_map, risk_map, bench_map)),
+                ("missing_protections", lambda: self._section_missing_protections(pdf, analysis)),
+                ("positive_aspects", lambda: self._section_positive_aspects(pdf, analysis)),
+                ("negotiation_checklist", lambda: self._section_negotiation_checklist(pdf, analysis)),
+            ],
+        }
+
+        for section_name, render_fn in section_map[export_type]:
+            try:
+                render_fn()
+            except Exception as exc:
+                logger.warning(
+                    f"PDF section {section_name} failed: {exc}",
+                    extra={"agent": "reports", "status": "warning"},
+                )
+                # Render a fallback note and continue
+                pdf.set_x(pdf.l_margin)
+                pdf.set_font("Helvetica", "I", 9)
+                pdf.set_text_color(180, 0, 0)
+                pdf.multi_cell(0, 5, f"[Section '{section_name}' could not be rendered]")
+                pdf.ln(2)
 
         logger.info(
             "PDF report generated",
@@ -151,10 +174,12 @@ class NegotiationBriefGenerator:
             pdf.ln(2)
         pdf.ln(1)
 
-    def _body(self, pdf: _LegalPDF, text: str) -> None:
+    def _body(self, pdf: _LegalPDF, text: str, max_len: int = 2000) -> None:
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(50, 50, 50)
-        pdf.multi_cell(0, 5, _safe(text))
+        # Reset x to left margin to avoid "not enough horizontal space" errors
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(0, 5, _safe(text, max_len=max_len))
         pdf.ln(1)
 
     def _risk_badge(self, pdf: _LegalPDF, level: str) -> None:
@@ -233,8 +258,8 @@ class NegotiationBriefGenerator:
             self._body(pdf, "No critical issues identified.")
             return
 
-        # Table header
-        col_widths = [12, 20, 18, 140]  # Rank, Clause, Risk, Issue
+        # Table header (total 186mm, leaving 4mm buffer on 190mm usable width)
+        col_widths = [10, 18, 22, 136]  # Rank, Clause, Risk, Issue
         headers = ["Rank", "Clause", "Risk", "Issue"]
         pdf.set_font("Helvetica", "B", 8)
         pdf.set_fill_color(240, 240, 240)
@@ -275,16 +300,19 @@ class NegotiationBriefGenerator:
             if issue.impact:
                 pdf.set_font("Helvetica", "B", 9)
                 pdf.set_text_color(180, 0, 0)
+                pdf.set_x(pdf.l_margin)
                 pdf.cell(0, 5, "Impact:", new_x="LMARGIN", new_y="NEXT")
                 self._body(pdf, issue.impact)
             if issue.recommended_action:
                 pdf.set_font("Helvetica", "B", 9)
                 pdf.set_text_color(0, 100, 0)
+                pdf.set_x(pdf.l_margin)
                 pdf.cell(0, 5, "Recommended Action:", new_x="LMARGIN", new_y="NEXT")
                 self._body(pdf, issue.recommended_action)
             if issue.suggested_counter_language:
                 pdf.set_font("Helvetica", "BI", 9)
                 pdf.set_text_color(30, 30, 120)
+                pdf.set_x(pdf.l_margin)
                 pdf.cell(0, 5, "Suggested Counter-Language:", new_x="LMARGIN", new_y="NEXT")
                 self._body(pdf, issue.suggested_counter_language)
 
@@ -300,13 +328,16 @@ class NegotiationBriefGenerator:
         for idx, m in enumerate(missing, 1):
             pdf.set_font("Helvetica", "B", 9)
             pdf.set_text_color(180, 0, 0)
-            pdf.cell(0, 5, _safe(f"{idx}. {m.clause_type}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(0, 5, _safe(f"{idx}. {m.clause_type}", max_len=100), new_x="LMARGIN", new_y="NEXT")
             pdf.set_text_color(50, 50, 50)
             pdf.set_font("Helvetica", "", 9)
-            pdf.multi_cell(0, 5, _safe(f"   Why important: {m.why_important}"))
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(0, 5, _safe(f"Why important: {m.why_important}", max_len=500))
             if m.suggested_language:
                 pdf.set_font("Helvetica", "I", 8)
-                pdf.multi_cell(0, 4, _safe(f"   Suggested: {m.suggested_language}"))
+                pdf.set_x(pdf.l_margin)
+                pdf.multi_cell(0, 4, _safe(f"Suggested: {m.suggested_language}", max_len=500))
             pdf.ln(1)
 
     def _section_positive_aspects(self, pdf: _LegalPDF, analysis: AnalysisResult) -> None:
@@ -321,7 +352,8 @@ class NegotiationBriefGenerator:
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(0, 120, 0)
         for p in positives:
-            pdf.cell(0, 5, _safe(f"  + [Clause {p.clause_id}] {p.description}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(0, 5, _safe(f"+ [Clause {p.clause_id}] {p.description}", max_len=300))
         pdf.set_text_color(50, 50, 50)
         pdf.ln(2)
 
@@ -337,9 +369,8 @@ class NegotiationBriefGenerator:
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(50, 50, 50)
         for idx, item in enumerate(priorities, 1):
-            # Checkbox style
-            pdf.cell(6, 5, "[ ]")
-            pdf.cell(0, 5, _safe(f"{idx}. {item}"), new_x="LMARGIN", new_y="NEXT")
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(0, 5, _safe(f"[ ] {idx}. {item}", max_len=300))
         pdf.ln(2)
 
     def _section_clause_table(
@@ -356,8 +387,8 @@ class NegotiationBriefGenerator:
             self._body(pdf, "No clauses available.")
             return
 
-        # Table header
-        col_widths = [12, 30, 28, 18, 40, 62]  # ID, Category, Deviation, Risk, Title, Summary
+        # Table header (total 186mm, leaving 4mm buffer on 190mm usable width)
+        col_widths = [10, 28, 26, 18, 40, 64]  # ID, Category, Deviation, Risk, Title, Summary
         headers = ["ID", "Category", "Deviation", "Risk", "Title", "Summary"]
         pdf.set_font("Helvetica", "B", 7)
         pdf.set_fill_color(240, 240, 240)
