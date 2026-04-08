@@ -1,0 +1,166 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Brand palette ── */
+  --color-suits-50: #f0f4ff;
+  --color-suits-100: #dbe4ff;
+  --color-suits-200: #bac8ff;
+  --color-suits-300: #91a7ff;
+  --color-suits-400: #748ffc;
+  --color-suits-500: #5c7cfa;
+  --color-suits-600: #4c6ef5;
+  --color-suits-700: #4263eb;
+  --color-suits-800: #3b5bdb;
+  --color-suits-900: #364fc7;
+  --color-suits-950: #1e2a5e;
+
+  /* ── Dark surface (sidebar, splash, onboarding) ── */
+  --color-surface: #09090b;
+  --color-surface-50: #0c0c0f;
+  --color-surface-100: #111114;
+  --color-surface-200: #18181b;
+  --color-surface-300: #27272a;
+  --color-surface-400: #3f3f46;
+  --color-surface-500: #52525b;
+  --color-surface-600: #71717a;
+  --color-surface-700: #a1a1aa;
+  --color-surface-800: #d4d4d8;
+  --color-surface-900: #e4e4e7;
+  --color-surface-950: #fafafa;
+
+  /* ── Cream palette (main app background) ── */
+  --color-cream: #FAF9F6;
+  --color-cream-100: #F5F4F0;
+  --color-cream-200: #ECEAE4;
+  --color-cream-300: #DDD9D0;
+  --color-cream-400: #C4BFB3;
+
+  /* ── Risk colors ── */
+  --color-risk-low: #22c55e;
+  --color-risk-medium: #f59e0b;
+  --color-risk-high: #ef4444;
+  --color-risk-critical: #dc2626;
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-display: 'Inter', 'SF Pro Display', system-ui, sans-serif;
+
+  /* ── Easing curves ── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-in-out-circ: cubic-bezier(0.85, 0, 0.15, 1);
+
+  /* ── Spacing ── */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+  --spacing-128: 32rem;
+}
+
+/* ── Base layer ── */
+@layer base {
+  * {
+    border-color: theme(--color-surface-300);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-surface text-surface-950 font-sans;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    @apply bg-suits-500/30 text-white;
+  }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-400/50 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-500;
+}
+
+/* ── Utility classes ── */
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, theme(--color-suits-400), theme(--color-suits-300), theme(--color-suits-500));
+  }
+
+  .text-gradient-warm {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #C9A96E, #E8D5B5, #B8924A);
+  }
+
+  .glass {
+    @apply bg-surface-100/60 backdrop-blur-xl border border-surface-300/50;
+  }
+
+  .glass-hover {
+    @apply hover:bg-surface-200/70 hover:border-surface-400/60 transition-all duration-300;
+  }
+
+  .glass-cream {
+    background: rgba(250, 249, 246, 0.7);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(221, 217, 208, 0.5);
+  }
+
+  .glow-sm {
+    box-shadow: 0 0 20px theme(--color-suits-500 / 15%);
+  }
+
+  .glow-md {
+    box-shadow: 0 0 40px theme(--color-suits-500 / 20%);
+  }
+
+  .glow-lg {
+    box-shadow: 0 0 80px theme(--color-suits-500 / 25%);
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 30px rgba(201, 169, 110, 0.15);
+  }
+
+  .sidebar-shadow {
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* ── Splash image fade gradient ── */
+.splash-fade {
+  mask-image: linear-gradient(to right, black 30%, transparent 85%);
+  -webkit-mask-image: linear-gradient(to right, black 30%, transparent 85%);
+}
+
+/* ── Typing indicator ── */
+@keyframes typing-dot {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-4px); }
+}
+
+.typing-dot:nth-child(1) { animation: typing-dot 1.4s ease-in-out infinite; }
+.typing-dot:nth-child(2) { animation: typing-dot 1.4s ease-in-out 0.2s infinite; }
+.typing-dot:nth-child(3) { animation: typing-dot 1.4s ease-in-out 0.4s infinite; }
+
+/* ── Video overlay ── */
+.video-vignette {
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
+}
