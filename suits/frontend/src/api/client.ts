@@ -300,6 +300,7 @@ async function consumeChatSSE(
 
   const decoder = new TextDecoder()
   let buffer = ''
+  let gotDone = false
 
   while (true) {
     const { done, value } = await reader.read()
@@ -317,11 +318,14 @@ async function consumeChatSSE(
       try {
         const evt = JSON.parse(jsonStr)
         if (evt.type === 'token') onToken(evt.content)
-        else if (evt.type === 'done') onDone(evt.source_clauses || [])
-        else if (evt.type === 'error') onError?.(evt.content)
+        else if (evt.type === 'done') { gotDone = true; onDone(evt.source_clauses || []) }
+        else if (evt.type === 'error') { gotDone = true; onError?.(evt.content) }
       } catch { /* skip */ }
     }
   }
+
+  // Fallback: if stream closed without done/error event, finalize anyway
+  if (!gotDone) onDone([])
 }
 
 export async function downloadReport(

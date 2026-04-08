@@ -22,7 +22,7 @@ export default function ToolLayout({ title, description, icon: Icon, result, chi
         >
           <div className="flex items-center gap-3 mb-1">
             <div className="w-9 h-9 rounded-xl bg-suits-500/10 flex items-center justify-center">
-              <Icon className="w-4.5 h-4.5 text-suits-600" />
+              <Icon className="w-[18px] h-[18px] text-suits-600" />
             </div>
             <h1 className="text-xl font-semibold text-surface-200">{title}</h1>
           </div>

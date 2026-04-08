@@ -182,7 +182,7 @@ export default function SettingsPage() {
           <div className="flex items-center gap-3 mt-10 pt-6 border-t border-cream-200">
             <motion.button
               onClick={handleSave}
-              disabled={!hasChanges && !saved}
+              disabled={!hasChanges}
               className={cn(
                 'flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-300',
                 saved

@@ -11,12 +11,12 @@ export default function RiskScorePage({ result }: { result: AnalysisResult | nul
 
   const score = risk?.score ?? 0
   const circumference = 2 * Math.PI * 54
-  const progress = circumference - (score / 100) * circumference
+  const progress = circumference - (score / 10) * circumference
 
   const scoreColor =
-    score <= 30 ? 'text-risk-low' : score <= 60 ? 'text-risk-medium' : score <= 80 ? 'text-risk-high' : 'text-risk-critical'
+    score <= 3 ? 'text-risk-low' : score <= 6 ? 'text-risk-medium' : score <= 8 ? 'text-risk-high' : 'text-risk-critical'
   const strokeColor =
-    score <= 30 ? '#22c55e' : score <= 60 ? '#f59e0b' : score <= 80 ? '#ef4444' : '#dc2626'
+    score <= 3 ? '#22c55e' : score <= 6 ? '#f59e0b' : score <= 8 ? '#ef4444' : '#dc2626'
 
   const distribution = {
     GREEN: risks.filter(r => r.risk_level === 'GREEN').length,
@@ -44,8 +44,8 @@ export default function RiskScorePage({ result }: { result: AnalysisResult | nul
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={cn('text-3xl font-bold', scoreColor)}>{score}</span>
-              <span className="text-xs text-cream-400">/100</span>
+              <span className={cn('text-3xl font-bold', scoreColor)}>{score.toFixed(1)}</span>
+              <span className="text-xs text-cream-400">/10</span>
             </div>
           </div>
           <p className="text-sm font-medium text-surface-300">{risk?.level?.replace(/_/g, ' ') || 'N/A'}</p>

@@ -32,7 +32,7 @@ export default function LibraryPage() {
         >
           <div className="flex items-center gap-3 mb-1">
             <div className="w-9 h-9 rounded-xl bg-suits-500/10 flex items-center justify-center">
-              <BookOpen className="w-4.5 h-4.5 text-suits-600" />
+              <BookOpen className="w-[18px] h-[18px] text-suits-600" />
             </div>
             <h1 className="text-xl font-semibold text-surface-200">Library & Sources</h1>
           </div>
