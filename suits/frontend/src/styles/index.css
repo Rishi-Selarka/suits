@@ -160,6 +160,16 @@
 .typing-dot:nth-child(2) { animation: typing-dot 1.4s ease-in-out 0.2s infinite; }
 .typing-dot:nth-child(3) { animation: typing-dot 1.4s ease-in-out 0.4s infinite; }
 
+/* ── Streaming cursor ── */
+@keyframes blink-cursor {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.streaming-cursor {
+  animation: blink-cursor 0.8s step-end infinite;
+}
+
 /* ── Video overlay ── */
 .video-vignette {
   background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);

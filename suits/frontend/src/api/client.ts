@@ -242,6 +242,88 @@ export async function generalChat(message: string): Promise<ChatResponse> {
   return data
 }
 
+export async function generalChatStream(
+  message: string,
+  onToken: (token: string) => void,
+  onDone: (sources: ChatResponse['source_clauses']) => void,
+  onError?: (error: string) => void,
+): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE}/chat/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({ message }),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Chat failed' }))
+      onError?.(err.detail || 'Chat failed')
+      return
+    }
+    await consumeChatSSE(response, onToken, onDone, onError)
+  } catch (err) {
+    onError?.(err instanceof Error ? err.message : 'Stream error')
+  }
+}
+
+export async function chatWithDocumentStream(
+  documentId: string,
+  message: string,
+  onToken: (token: string) => void,
+  onDone: (sources: ChatResponse['source_clauses']) => void,
+  onError?: (error: string) => void,
+): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE}/chat/${documentId}/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({ message }),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Chat failed' }))
+      onError?.(err.detail || 'Chat failed')
+      return
+    }
+    await consumeChatSSE(response, onToken, onDone, onError)
+  } catch (err) {
+    onError?.(err instanceof Error ? err.message : 'Stream error')
+  }
+}
+
+async function consumeChatSSE(
+  response: Response,
+  onToken: (token: string) => void,
+  onDone: (sources: ChatResponse['source_clauses']) => void,
+  onError?: (error: string) => void,
+): Promise<void> {
+  const reader = response.body?.getReader()
+  if (!reader) { onError?.('No stream'); return }
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed || !trimmed.startsWith('data:')) continue
+      const jsonStr = trimmed.slice(5).trim()
+      if (!jsonStr) continue
+      try {
+        const evt = JSON.parse(jsonStr)
+        if (evt.type === 'token') onToken(evt.content)
+        else if (evt.type === 'done') onDone(evt.source_clauses || [])
+        else if (evt.type === 'error') onError?.(evt.content)
+      } catch { /* skip */ }
+    }
+  }
+}
+
 export async function downloadReport(
   documentId: string,
   exportType: string = 'negotiation_brief',

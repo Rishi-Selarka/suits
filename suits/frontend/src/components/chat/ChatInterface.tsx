@@ -10,7 +10,11 @@ import {
 import { useUser } from '@/context/UserContext'
 import ChatMessage from './ChatMessage'
 import ChatInput from './ChatInput'
-import { chatWithDocument, generalChat, type ChatResponse } from '@/api/client'
+import {
+  generalChatStream,
+  chatWithDocumentStream,
+  type ChatResponse,
+} from '@/api/client'
 import { easeOutExpo, staggerContainer, staggerItem } from '@/lib/motion'
 
 interface Message {
@@ -59,17 +63,27 @@ function getGreeting(): string {
   return 'Good evening'
 }
 
-function TypingIndicator() {
+function ThinkingIndicator() {
   return (
     <div className="flex gap-4 px-6 py-5">
       <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-suits-500 to-suits-700 flex items-center justify-center shrink-0">
         <span className="text-white text-xs font-bold">S</span>
       </div>
       <div className="bg-cream border border-cream-200 rounded-2xl rounded-tl-md px-5 py-4">
-        <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-surface-400 typing-dot" />
-          <div className="w-2 h-2 rounded-full bg-surface-400 typing-dot" />
-          <div className="w-2 h-2 rounded-full bg-surface-400 typing-dot" />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-suits-500 typing-dot" />
+            <div className="w-2 h-2 rounded-full bg-suits-500 typing-dot" />
+            <div className="w-2 h-2 rounded-full bg-suits-500 typing-dot" />
+          </div>
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="text-sm text-cream-400"
+          >
+            Thinking...
+          </motion.span>
         </div>
       </div>
     </div>
@@ -79,51 +93,129 @@ function TypingIndicator() {
 export default function ChatInterface({ documentId, onFileSelect }: ChatInterfaceProps) {
   const { user } = useUser()
   const [messages, setMessages] = useState<Message[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isThinking, setIsThinking] = useState(false)
+  const [streamingId, setStreamingId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const tokenBufferRef = useRef('')
+  const rafRef = useRef<number>(0)
+  const streamMsgIdRef = useRef<string | null>(null)
 
   const isEmpty = messages.length === 0
+  const isBusy = isThinking || streamingId !== null
 
+  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages, isLoading])
+  }, [messages, isThinking, streamingId])
+
+  // Flush buffered tokens to state at ~60fps
+  const flushTokens = useCallback(() => {
+    const msgId = streamMsgIdRef.current
+    if (!msgId || !tokenBufferRef.current) return
+    const chunk = tokenBufferRef.current
+    tokenBufferRef.current = ''
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === msgId ? { ...m, content: m.content + chunk } : m,
+      ),
+    )
+    // Keep scrolling during stream
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [])
 
   const handleSend = useCallback(
     async (content: string) => {
+      if (isBusy) return
+
       const userMsg: Message = {
         id: crypto.randomUUID(),
         role: 'user',
         content,
       }
       setMessages(prev => [...prev, userMsg])
-      setIsLoading(true)
+      setIsThinking(true)
+
+      const assistantId = crypto.randomUUID()
+      streamMsgIdRef.current = assistantId
+      tokenBufferRef.current = ''
+      let firstTokenReceived = false
+
+      const onToken = (token: string) => {
+        // On first token, transition from thinking → streaming
+        if (!firstTokenReceived) {
+          firstTokenReceived = true
+          setIsThinking(false)
+          setMessages(prev => [
+            ...prev,
+            { id: assistantId, role: 'assistant' as const, content: '' },
+          ])
+          setStreamingId(assistantId)
+        }
+
+        // Buffer tokens, flush via rAF
+        tokenBufferRef.current += token
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = requestAnimationFrame(flushTokens)
+      }
+
+      const onDone = (sources: ChatResponse['source_clauses']) => {
+        // Final flush
+        cancelAnimationFrame(rafRef.current)
+        const remaining = tokenBufferRef.current
+        tokenBufferRef.current = ''
+        streamMsgIdRef.current = null
+
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantId
+              ? { ...m, content: m.content + remaining, sources }
+              : m,
+          ),
+        )
+        setStreamingId(null)
+        setIsThinking(false)
+      }
+
+      const onError = (error: string) => {
+        cancelAnimationFrame(rafRef.current)
+        tokenBufferRef.current = ''
+        streamMsgIdRef.current = null
+        setStreamingId(null)
+        setIsThinking(false)
+
+        setMessages(prev => {
+          // If we already have a streaming message, update it
+          const existing = prev.find(m => m.id === assistantId)
+          if (existing) {
+            return prev.map(m =>
+              m.id === assistantId
+                ? { ...m, content: m.content || error }
+                : m,
+            )
+          }
+          return [
+            ...prev,
+            { id: assistantId, role: 'assistant' as const, content: error },
+          ]
+        })
+      }
 
       try {
-        const response = documentId
-          ? await chatWithDocument(documentId, content)
-          : await generalChat(content)
-        const assistantMsg: Message = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: response.answer,
-          sources: response.source_clauses,
+        if (documentId) {
+          await chatWithDocumentStream(documentId, content, onToken, onDone, onError)
+        } else {
+          await generalChatStream(content, onToken, onDone, onError)
         }
-        setMessages(prev => [...prev, assistantMsg])
-      } catch (_) {
-        const errorMsg: Message = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: 'I encountered an error processing your request. Please try again.',
-        }
-        setMessages(prev => [...prev, errorMsg])
-      } finally {
-        setIsLoading(false)
+      } catch {
+        onError('Something went wrong. Please try again.')
       }
     },
-    [documentId],
+    [documentId, isBusy, flushTokens],
   )
 
   const openFilePicker = () => fileInputRef.current?.click()
@@ -132,7 +224,6 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
     const file = e.target.files?.[0]
     if (!file) return
     onFileSelect?.(file)
-    // Reset so the same file can be re-selected
     e.target.value = ''
   }
 
@@ -161,7 +252,7 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
 
       {/* ── Messages area ── */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        {isEmpty ? (
+        {isEmpty && !isThinking ? (
           <div className="flex flex-col items-center justify-center h-full px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -222,10 +313,11 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
                   sources={msg.sources}
                   userName={user.name}
                   index={i}
+                  isStreaming={msg.id === streamingId}
                 />
               ))}
             </AnimatePresence>
-            {isLoading && <TypingIndicator />}
+            {isThinking && <ThinkingIndicator />}
           </div>
         )}
       </div>
@@ -233,7 +325,7 @@ export default function ChatInterface({ documentId, onFileSelect }: ChatInterfac
       <ChatInput
         onSend={handleSend}
         onUpload={openFilePicker}
-        disabled={isLoading}
+        disabled={isBusy}
       />
     </div>
   )

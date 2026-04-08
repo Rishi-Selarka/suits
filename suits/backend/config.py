@@ -32,6 +32,9 @@ class AgentModelsConfig(BaseModel):
     advisor: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
     verifier: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
     rag_chat: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
+    general_chat: ModelConfig = ModelConfig(
+        model_id="openai/gpt-4o-mini", temperature=0.3
+    )
 
 
 class Settings(BaseSettings):
