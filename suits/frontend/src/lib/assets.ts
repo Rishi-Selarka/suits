@@ -8,4 +8,7 @@ export const ASSETS = {
 
   /** Onboarding intro video — man in suit walks toward camera. Drop as public/videos/onboarding.mp4 */
   onboardingVideo: '/videos/onboarding.mp4',
+
+  /** Suits AI tie logo icon */
+  logo: '/images/suits-logo.png',
 } as const

@@ -59,19 +59,19 @@ export default function OnboardingVideo({ onComplete }: OnboardingVideoProps) {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, ease: easeOutExpo }}
             >
-              <motion.div
-                className="w-20 h-20 rounded-2xl bg-gradient-to-br from-suits-500 to-suits-700 flex items-center justify-center mb-6"
+              <motion.img
+                src="/images/suits-logo.png"
+                alt="Suits AI"
+                className="w-20 h-20 object-contain mb-6"
                 animate={{
-                  boxShadow: [
-                    '0 0 0px rgba(92, 124, 250, 0)',
-                    '0 0 60px rgba(92, 124, 250, 0.4)',
-                    '0 0 0px rgba(92, 124, 250, 0)',
+                  filter: [
+                    'drop-shadow(0 0 0px rgba(92, 124, 250, 0))',
+                    'drop-shadow(0 0 30px rgba(92, 124, 250, 0.4))',
+                    'drop-shadow(0 0 0px rgba(92, 124, 250, 0))',
                   ],
                 }}
                 transition={{ duration: 2, repeat: Infinity }}
-              >
-                <span className="text-white text-3xl font-bold">S</span>
-              </motion.div>
+              />
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
