@@ -15,6 +15,7 @@ interface ChatMessageProps {
   content: string
   sources?: Source[]
   userName?: string
+  userAvatar?: string
   index: number
   isStreaming?: boolean
 }
@@ -43,6 +44,7 @@ export default function ChatMessage({
   content,
   sources,
   userName,
+  userAvatar,
   index,
   isStreaming,
 }: ChatMessageProps) {
@@ -68,7 +70,9 @@ export default function ChatMessage({
     >
       {/* AI avatar */}
       {!isUser && (
-        <img src="/images/suits-logo.png" alt="Suits AI" className="w-8 h-8 object-contain shrink-0 mt-1" />
+        <div className="w-8 h-8 rounded-lg bg-surface-50 border border-cream-200 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
+          <img src="/images/suits-logo.png" alt="Suits AI" className="w-6 h-6 object-contain" />
+        </div>
       )}
 
       <div className={cn('max-w-[680px]', isUser ? 'items-end' : '')}>
@@ -121,10 +125,14 @@ export default function ChatMessage({
 
       {/* User avatar */}
       {isUser && (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-surface-400 to-surface-600 flex items-center justify-center shrink-0 mt-1">
-          <span className="text-white text-xs font-semibold">
-            {userName?.[0]?.toUpperCase() || 'U'}
-          </span>
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-surface-400 to-surface-600 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
+          {userAvatar ? (
+            <img src={userAvatar} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className="text-white text-xs font-semibold">
+              {userName?.[0]?.toUpperCase() || 'U'}
+            </span>
+          )}
         </div>
       )}
     </motion.div>

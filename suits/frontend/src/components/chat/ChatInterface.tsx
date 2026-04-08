@@ -349,6 +349,7 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
                   content={msg.content}
                   sources={msg.sources}
                   userName={user.name}
+                  userAvatar={user.avatar}
                   index={i}
                   isStreaming={msg.id === streamingId}
                 />
