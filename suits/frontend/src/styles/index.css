@@ -144,10 +144,16 @@
   }
 }
 
-/* ── Splash image fade gradient ── */
-.splash-fade {
-  mask-image: linear-gradient(to right, black 30%, transparent 85%);
-  -webkit-mask-image: linear-gradient(to right, black 30%, transparent 85%);
+/* ── Splash image fade — multi-directional dissolve into dark surface ── */
+.splash-mask {
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    transparent 50%,
+    rgba(9, 9, 11, 0.4) 70%,
+    rgba(9, 9, 11, 0.85) 85%,
+    rgb(9, 9, 11) 100%
+  );
 }
 
 /* ── Typing indicator ── */

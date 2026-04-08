@@ -25,36 +25,60 @@ export default function SplashScreen({ onContinue }: SplashScreenProps) {
     <AnimatePresence>
       {!exiting ? (
         <motion.div
-          className="fixed inset-0 bg-surface flex"
+          className="fixed inset-0 bg-surface flex overflow-hidden"
           exit={{ opacity: 0, scale: 1.02 }}
           transition={{ duration: 0.8, ease: easeOutExpo }}
         >
-          {/* ── Left: Hero image with fade ── */}
-          <div className="relative w-1/2 h-full overflow-hidden hidden lg:block">
+          {/* ── Background image layer ── */}
+          <div className="absolute inset-0 w-[60%] h-full hidden lg:block">
             <motion.img
               src={ASSETS.splashHero}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover splash-fade"
-              initial={{ scale: 1.1, opacity: 0 }}
+              className="absolute inset-0 w-full h-full object-cover"
+              initial={{ scale: 1.08, opacity: 0 }}
               animate={{
-                scale: imageLoaded ? 1 : 1.1,
+                scale: imageLoaded ? 1 : 1.08,
                 opacity: imageLoaded ? 1 : 0,
               }}
-              transition={{ duration: 1.8, ease: easeOutExpo }}
+              transition={{ duration: 2.2, ease: easeOutExpo }}
               onLoad={() => setImageLoaded(true)}
             />
 
-            {/* Fallback gradient if image hasn't loaded */}
-            <div className="absolute inset-0 bg-gradient-to-br from-surface-200 to-surface splash-fade" />
+            {/* Right edge fade — image melts into the dark surface */}
+            <div className="absolute inset-0 splash-mask" />
 
-            {/* Bottom vignette */}
-            <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent opacity-60" />
+            {/* Warm cinematic tint overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-suits-950/40 via-transparent to-surface/50 mix-blend-multiply" />
+
+            {/* Bottom vignette for depth */}
+            <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent" />
+
+            {/* Top vignette — subtle */}
+            <div className="absolute inset-0 bg-gradient-to-b from-surface/50 via-transparent to-transparent" />
+
+            {/* Subtle blue accent glow at the fade edge */}
+            <motion.div
+              className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-suits-600/8 to-transparent"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: imageLoaded ? 1 : 0 }}
+              transition={{ duration: 2, delay: 0.5 }}
+            />
           </div>
 
-          {/* ── Right: Name input ── */}
-          <div className="flex-1 flex items-center justify-center px-8 lg:px-16 relative">
-            {/* Subtle ambient glow */}
-            <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-suits-600/5 rounded-full blur-3xl pointer-events-none" />
+          {/* ── Mobile: subtle background glow instead of image ── */}
+          <div className="absolute inset-0 lg:hidden">
+            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-suits-600/8 rounded-full blur-[120px]" />
+          </div>
+
+          {/* ── Right: Name input area ── */}
+          <div className="flex-1 flex items-center justify-center px-8 lg:px-16 relative z-10 lg:ml-[40%]">
+            {/* Ambient glow behind form */}
+            <motion.div
+              className="absolute top-1/3 right-1/4 w-96 h-96 bg-suits-600/5 rounded-full blur-3xl pointer-events-none"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 2, delay: 1 }}
+            />
 
             <div className="w-full max-w-md relative z-10">
               {/* Brand mark */}
@@ -65,7 +89,7 @@ export default function SplashScreen({ onContinue }: SplashScreenProps) {
                 className="mb-16"
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-suits-500 to-suits-700 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-suits-500 to-suits-700 flex items-center justify-center shadow-lg shadow-suits-500/20">
                     <span className="text-white text-sm font-bold">S</span>
                   </div>
                   <span className="text-surface-600 text-sm font-medium tracking-widest uppercase">

@@ -25,6 +25,7 @@ from models import (
     ChatResponse,
     CompareRequest,
     DocumentMetadata,
+    NegotiateRequest,
     OnboardingRequest,
     PaymentCreateRequest,
     PaymentVerifyRequest,
@@ -397,6 +398,192 @@ async def get_results(document_id: str, request: Request) -> AnalysisResult:
             )
         raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
     return result
+
+
+# ── POST /api/negotiate/stream (AI vs AI negotiation) ──────────────────────
+
+@app.post("/api/negotiate/stream")
+async def negotiate_stream(body: NegotiateRequest, request: Request) -> EventSourceResponse:
+    """Run an AI vs AI negotiation debate and stream results via SSE."""
+    llm_client = _llm(request)
+    settings = _settings(request)
+    storage = _storage(request)
+
+    if not body.message.strip():
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
+
+    from prompts.templates import (
+        NEGOTIATOR_ADVOCATE_PROMPT,
+        NEGOTIATOR_CHALLENGER_PROMPT,
+        NEGOTIATOR_CONCLUSION_PROMPT,
+    )
+
+    agent1_config = settings.agent_models.negotiator_agent1
+    agent2_config = settings.agent_models.negotiator_agent2
+
+    # Build document context if provided
+    doc_context = ""
+    if body.document_id:
+        result = storage.get_result(body.document_id)
+        if result:
+            clauses_raw = storage.get_clauses(body.document_id)
+            if not clauses_raw:
+                clauses_raw = [c.model_dump() for c in result.clauses]
+            clause_texts = [
+                f"[Clause {c.get('clause_id', '?')}: {c.get('title', '')}] {c.get('text', '')[:400]}"
+                for c in clauses_raw[:20]
+            ]
+            doc_context = "\n\nDocument clauses for reference:\n" + "\n\n".join(clause_texts)
+
+    user_topic = body.message + doc_context
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        try:
+            # Conversation histories for each agent
+            agent1_messages: list[dict[str, str]] = [
+                {"role": "system", "content": NEGOTIATOR_ADVOCATE_PROMPT},
+            ]
+            agent2_messages: list[dict[str, str]] = [
+                {"role": "system", "content": NEGOTIATOR_CHALLENGER_PROMPT},
+            ]
+
+            # Signal negotiation start
+            yield json.dumps({
+                "type": "negotiate_start",
+                "rounds": body.rounds,
+                "topic": body.message,
+            })
+
+            last_response = ""
+
+            for round_num in range(1, body.rounds + 1):
+                # ── Agent 1 (Advocate) turn ──
+                if round_num == 1:
+                    agent1_messages.append({
+                        "role": "user",
+                        "content": f"The user wants to discuss/negotiate: {user_topic}\n\nMake your opening argument.",
+                    })
+                else:
+                    agent1_messages.append({
+                        "role": "user",
+                        "content": f"The Challenger responded:\n\n{last_response}\n\nRespond to their points.",
+                    })
+
+                yield json.dumps({
+                    "type": "agent_start",
+                    "agent": "advocate",
+                    "round": round_num,
+                })
+
+                agent1_response = ""
+                async for token in llm_client.call_stream_messages(
+                    config=agent1_config,
+                    messages=agent1_messages,
+                ):
+                    agent1_response += token
+                    yield json.dumps({
+                        "type": "token",
+                        "agent": "advocate",
+                        "content": token,
+                    })
+
+                agent1_messages.append({"role": "assistant", "content": agent1_response})
+
+                yield json.dumps({
+                    "type": "agent_end",
+                    "agent": "advocate",
+                    "round": round_num,
+                })
+
+                # ── Agent 2 (Challenger) turn ──
+                if round_num == 1:
+                    agent2_messages.append({
+                        "role": "user",
+                        "content": (
+                            f"The user wants to discuss/negotiate: {user_topic}\n\n"
+                            f"The Advocate opened with:\n\n{agent1_response}\n\nRespond to their arguments."
+                        ),
+                    })
+                else:
+                    agent2_messages.append({
+                        "role": "user",
+                        "content": f"The Advocate responded:\n\n{agent1_response}\n\nRespond to their points.",
+                    })
+
+                yield json.dumps({
+                    "type": "agent_start",
+                    "agent": "challenger",
+                    "round": round_num,
+                })
+
+                agent2_response = ""
+                async for token in llm_client.call_stream_messages(
+                    config=agent2_config,
+                    messages=agent2_messages,
+                ):
+                    agent2_response += token
+                    yield json.dumps({
+                        "type": "token",
+                        "agent": "challenger",
+                        "content": token,
+                    })
+
+                agent2_messages.append({"role": "assistant", "content": agent2_response})
+                last_response = agent2_response
+
+                yield json.dumps({
+                    "type": "agent_end",
+                    "agent": "challenger",
+                    "round": round_num,
+                })
+
+            # ── Conclusion ──
+            yield json.dumps({"type": "conclusion_start"})
+
+            # Build a summary of the full debate for the conclusion agent
+            debate_transcript = []
+            for round_num in range(1, body.rounds + 1):
+                # agent1_messages: system, then pairs of (user, assistant)
+                adv_idx = round_num * 2 - 1  # user msg index
+                adv_resp = agent1_messages[adv_idx + 1]["content"] if (adv_idx + 1) < len(agent1_messages) else ""
+                chl_idx = round_num * 2 - 1  # user msg index for agent2
+                chl_resp = agent2_messages[chl_idx + 1]["content"] if (chl_idx + 1) < len(agent2_messages) else ""
+                debate_transcript.append(f"Round {round_num} — Advocate: {adv_resp}")
+                debate_transcript.append(f"Round {round_num} — Challenger: {chl_resp}")
+
+            conclusion_messages: list[dict[str, str]] = [
+                {"role": "system", "content": NEGOTIATOR_CONCLUSION_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Topic: {body.message}\n\n"
+                        f"Debate transcript:\n\n" + "\n\n".join(debate_transcript) +
+                        "\n\nProvide your conclusion and recommendations."
+                    ),
+                },
+            ]
+
+            # Use agent1's config for the conclusion (any fast model works)
+            async for token in llm_client.call_stream_messages(
+                config=agent1_config,
+                messages=conclusion_messages,
+            ):
+                yield json.dumps({
+                    "type": "token",
+                    "agent": "conclusion",
+                    "content": token,
+                })
+
+            yield json.dumps({
+                "type": "done",
+                "total_rounds": body.rounds,
+            })
+
+        except Exception as exc:
+            logger.error(f"Negotiation stream failed: {exc}", extra={"status": "negotiate_error"}, exc_info=True)
+            yield json.dumps({"type": "error", "content": f"Negotiation failed: {str(exc)}"})
+
+    return EventSourceResponse(event_generator())
 
 
 # ── POST /api/chat/stream (streaming general chat) ─────────────────────────

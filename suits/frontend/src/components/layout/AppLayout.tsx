@@ -185,7 +185,7 @@ export default function AppLayout() {
         {activeView === 'deadlines' && <DeadlineTrackerPage result={currentResult} />}
         {activeView === 'timebomb' && <TimebombPage result={currentResult} />}
         {activeView === 'trap-detector' && <TrapDetectorPage result={currentResult} />}
-        {activeView === 'negotiator' && <NegotiatorPage result={currentResult} />}
+        {activeView === 'negotiator' && <NegotiatorPage />}
         {activeView === 'documents' && <DocumentsPage onViewDocument={handleViewDocument} />}
         {activeView === 'library' && <LibraryPage />}
         {activeView === 'downloads' && <DownloadsPage result={currentResult} />}
