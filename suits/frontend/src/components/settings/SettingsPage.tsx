@@ -216,9 +216,9 @@ export default function SettingsPage() {
 
           {/* ── Logout ── */}
           <div className="mt-10 pt-6 border-t border-cream-200">
-            <p className="text-xs font-medium text-cream-400 uppercase tracking-wider mb-3">Reset</p>
+            <p className="text-xs font-medium text-cream-400 uppercase tracking-wider mb-3">Account</p>
             <p className="text-sm text-cream-400 mb-4">
-              Clear all data and return to the onboarding screen. This removes your profile, chat history, and uploaded documents.
+              Log out and return to the welcome screen. Your data will be cleared.
             </p>
             <motion.button
               onClick={resetUser}
@@ -227,7 +227,7 @@ export default function SettingsPage() {
               whileTap={{ scale: 0.98 }}
             >
               <LogOut className="w-4 h-4" />
-              Logout &amp; Reset
+              Logout
             </motion.button>
           </div>
         </motion.div>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { UserProvider, useUser } from '@/context/UserContext'
 import Welcome from '@/pages/Welcome'
@@ -8,6 +8,11 @@ import { easeOutExpo } from '@/lib/motion'
 function AppRouter() {
   const { user } = useUser()
   const [showApp, setShowApp] = useState(user.onboarded)
+
+  // React to logout: when user.onboarded becomes false, go back to splash
+  useEffect(() => {
+    if (!user.onboarded) setShowApp(false)
+  }, [user.onboarded])
 
   const handleOnboardingComplete = () => {
     setShowApp(true)
