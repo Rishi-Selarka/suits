@@ -180,11 +180,11 @@ export default function AppLayout() {
         )}
 
         {activeView === 'settings' && <SettingsPage />}
-        {activeView === 'risk-score' && <RiskScorePage result={currentResult} />}
-        {activeView === 'simulator' && <WhatCouldGoWrongPage result={currentResult} />}
-        {activeView === 'deadlines' && <DeadlineTrackerPage result={currentResult} />}
-        {activeView === 'timebomb' && <TimebombPage result={currentResult} />}
-        {activeView === 'trap-detector' && <TrapDetectorPage result={currentResult} />}
+        {activeView === 'risk-score' && <RiskScorePage />}
+        {activeView === 'simulator' && <WhatCouldGoWrongPage />}
+        {activeView === 'deadlines' && <DeadlineTrackerPage />}
+        {activeView === 'timebomb' && <TimebombPage />}
+        {activeView === 'trap-detector' && <TrapDetectorPage />}
         {activeView === 'negotiator' && <NegotiatorPage />}
         {activeView === 'documents' && <DocumentsPage onViewDocument={handleViewDocument} />}
         {activeView === 'library' && <LibraryPage />}

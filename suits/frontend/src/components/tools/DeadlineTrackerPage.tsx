@@ -37,35 +37,39 @@ function extractDeadlines(result: AnalysisResult): DeadlineItem[] {
   return items
 }
 
-export default function DeadlineTrackerPage({ result }: { result: AnalysisResult | null }) {
-  const deadlines = result ? extractDeadlines(result) : []
+function DeadlineTrackerContent({ result }: { result: AnalysisResult }) {
+  const deadlines = extractDeadlines(result)
 
-  return (
-    <ToolLayout title="Deadline Tracker" description="Dates, periods, and time-sensitive obligations" icon={Calendar} result={result}>
-      {deadlines.length === 0 ? (
-        <p className="text-center text-cream-400 py-12">No date references found in this document.</p>
-      ) : (
-        <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-3">
-          {deadlines.map((d, i) => (
-            <motion.div
-              key={`${d.clauseId}-${d.match}-${i}`}
-              variants={staggerItem}
-              className="flex items-start gap-4 bg-white rounded-2xl border border-cream-200 p-4"
-            >
-              <div className="w-10 h-10 rounded-xl bg-suits-500/10 flex items-center justify-center shrink-0">
-                <Calendar className="w-4 h-4 text-suits-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="px-2 py-0.5 rounded-md bg-suits-50 text-suits-700 text-xs font-medium">{d.match}</span>
-                  <span className="text-xs text-cream-400">Clause {d.clauseId} · Page {d.page}</span>
-                </div>
-                <p className="text-sm text-surface-300 line-clamp-2">{d.text}</p>
-              </div>
-            </motion.div>
-          ))}
+  return deadlines.length === 0 ? (
+    <p className="text-center text-cream-400 py-12">No date references found in this document.</p>
+  ) : (
+    <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-3">
+      {deadlines.map((d, i) => (
+        <motion.div
+          key={`${d.clauseId}-${d.match}-${i}`}
+          variants={staggerItem}
+          className="flex items-start gap-4 bg-white rounded-2xl border border-cream-200 p-4"
+        >
+          <div className="w-10 h-10 rounded-xl bg-suits-500/10 flex items-center justify-center shrink-0">
+            <Calendar className="w-4 h-4 text-suits-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="px-2 py-0.5 rounded-md bg-suits-50 text-suits-700 text-xs font-medium">{d.match}</span>
+              <span className="text-xs text-cream-400">Clause {d.clauseId} · Page {d.page}</span>
+            </div>
+            <p className="text-sm text-surface-300 line-clamp-2">{d.text}</p>
+          </div>
         </motion.div>
-      )}
+      ))}
+    </motion.div>
+  )
+}
+
+export default function DeadlineTrackerPage() {
+  return (
+    <ToolLayout title="Deadline Tracker" description="Dates, periods, and time-sensitive obligations" icon={Calendar}>
+      {(result) => <DeadlineTrackerContent result={result} />}
     </ToolLayout>
   )
 }

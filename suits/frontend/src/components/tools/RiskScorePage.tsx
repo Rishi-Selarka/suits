@@ -4,10 +4,10 @@ import ToolLayout from './ToolLayout'
 import { cn } from '@/lib/utils'
 import type { AnalysisResult } from '@/api/client'
 
-export default function RiskScorePage({ result }: { result: AnalysisResult | null }) {
-  const advisory = result?.advisory
+function RiskScoreContent({ result }: { result: AnalysisResult }) {
+  const advisory = result.advisory
   const risk = advisory?.overall_risk_assessment
-  const risks = result?.risks || []
+  const risks = result.risks || []
 
   const score = risk?.score ?? 0
   const circumference = 2 * Math.PI * 54
@@ -28,7 +28,7 @@ export default function RiskScorePage({ result }: { result: AnalysisResult | nul
   const topRisks = [...risks].sort((a, b) => b.risk_score - a.risk_score).slice(0, 6)
 
   return (
-    <ToolLayout title="Risk Score" description="Overall risk assessment and clause-level breakdown" icon={Shield} result={result}>
+    <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {/* Score ring */}
         <div className="bg-white rounded-2xl border border-cream-200 p-6 flex flex-col items-center justify-center">
@@ -92,7 +92,7 @@ export default function RiskScorePage({ result }: { result: AnalysisResult | nul
         <div className="bg-white rounded-2xl border border-cream-200 p-6">
           <p className="text-xs font-medium text-cream-400 uppercase tracking-wider mb-4">Verdict</p>
           <p className="text-sm text-surface-300 leading-relaxed">
-            {risk?.verdict_reasoning || 'No verdict available. Analyze a document to see results.'}
+            {risk?.verdict_reasoning || 'No verdict available.'}
           </p>
         </div>
       </div>
@@ -126,6 +126,14 @@ export default function RiskScorePage({ result }: { result: AnalysisResult | nul
           ))}
         </div>
       </div>
+    </>
+  )
+}
+
+export default function RiskScorePage() {
+  return (
+    <ToolLayout title="Risk Score" description="Overall risk assessment and clause-level breakdown" icon={Shield}>
+      {(result) => <RiskScoreContent result={result} />}
     </ToolLayout>
   )
 }
