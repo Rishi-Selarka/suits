@@ -187,3 +187,45 @@ class LLMResponse(BaseModel):
     tokens_in: int = 0
     tokens_out: int = 0
     latency_ms: int = 0
+
+
+# ── User / onboarding models ───────────────────────────────────────────────
+
+class OnboardingRequest(BaseModel):
+    name: str
+    email: str | None = None
+    role: Literal["individual", "lawyer", "business", "student"] = "individual"
+    organization: str = ""
+    use_case: str = ""
+    jurisdiction: str = "India"
+
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str | None = None
+    role: str
+    organization: str
+    use_case: str
+    jurisdiction: str
+    plan: str
+    documents_used: int
+    quota: dict[str, Any] | None = None
+
+
+class QuotaResponse(BaseModel):
+    allowed: bool
+    used: int
+    limit: int
+    plan: str
+    remaining: int
+
+
+class PaymentCreateRequest(BaseModel):
+    plan: Literal["starter", "pro", "unlimited"]
+
+
+class PaymentVerifyRequest(BaseModel):
+    payment_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str = ""
