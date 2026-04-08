@@ -861,7 +861,7 @@ export default function NegotiatorPage() {
           )}
 
           <div className={cn(
-            'flex items-end gap-2 bg-white border rounded-2xl px-4 py-3 shadow-sm transition-all duration-300',
+            'flex items-center gap-2 bg-white border rounded-2xl px-4 py-3 shadow-sm transition-all duration-300',
             isBusy ? 'border-cream-200 opacity-60' : 'border-cream-300 focus-within:border-amber-400/50 focus-within:shadow-md',
           )}>
             {/* Upload */}
@@ -875,7 +875,7 @@ export default function NegotiatorPage() {
             {!isBusy && (
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="p-1.5 rounded-lg text-surface-400 hover:text-surface-300 hover:bg-cream-100 transition-colors shrink-0 mb-0.5"
+                className="p-1.5 rounded-lg text-surface-400 hover:text-surface-300 hover:bg-cream-100 transition-colors shrink-0"
                 title="Upload a document for context"
               >
                 <Paperclip className="w-[18px] h-[18px]" />
@@ -897,7 +897,7 @@ export default function NegotiatorPage() {
               }
               disabled={isBusy}
               rows={1}
-              className="flex-1 bg-transparent text-surface-200 placeholder:text-cream-400 text-[15px] leading-relaxed outline-none resize-none disabled:opacity-50"
+              className="flex-1 bg-transparent text-surface-200 placeholder:text-cream-400 text-[15px] leading-relaxed outline-none resize-none overflow-hidden disabled:opacity-50"
             />
 
             {/* Send */}
@@ -905,7 +905,7 @@ export default function NegotiatorPage() {
               onClick={status === 'done' ? handleReset : handleSend}
               disabled={status === 'done' ? false : !canSend}
               className={cn(
-                'p-2 rounded-xl transition-all duration-200 shrink-0 mb-0.5',
+                'p-2 rounded-xl transition-all duration-200 shrink-0',
                 (canSend || status === 'done')
                   ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-sm hover:shadow-md'
                   : 'bg-cream-200 text-cream-400 cursor-not-allowed',

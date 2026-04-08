@@ -68,7 +68,7 @@ export default function ChatInput({
             placeholder={placeholder}
             disabled={disabled}
             rows={1}
-            className="flex-1 bg-transparent text-surface-200 placeholder:text-cream-400 text-[15px] leading-relaxed outline-none resize-none disabled:opacity-50"
+            className="flex-1 bg-transparent text-surface-200 placeholder:text-cream-400 text-[15px] leading-relaxed outline-none resize-none overflow-hidden disabled:opacity-50"
           />
 
           {/* Send button */}
