@@ -17,7 +17,7 @@ interface TrapClause {
   page: number
 }
 
-function findTraps(result: AnalysisResult): TrapClause[] {
+export function findTraps(result: AnalysisResult): TrapClause[] {
   const traps: TrapClause[] = []
 
   const redRisks = result.risks.filter(r => r.risk_level === 'RED' || r.risk_score >= 60)
@@ -43,7 +43,7 @@ function findTraps(result: AnalysisResult): TrapClause[] {
   return traps.sort((a, b) => b.riskScore - a.riskScore)
 }
 
-function TrapDetectorContent({ result }: { result: AnalysisResult }) {
+export function TrapDetectorContent({ result }: { result: AnalysisResult }) {
   const traps = findTraps(result)
 
   return traps.length === 0 ? (
@@ -123,7 +123,7 @@ function TrapDetectorContent({ result }: { result: AnalysisResult }) {
 
 export default function TrapDetectorPage() {
   return (
-    <ToolLayout title="Trap Clause Detector" description="Hidden risks, one-sided terms, and deceptive language" icon={Eye}>
+    <ToolLayout title="Trap Clause Detector" description="Hidden risks, one-sided terms, and deceptive language" icon={Eye} exportType="trap_clauses">
       {(result) => <TrapDetectorContent result={result} />}
     </ToolLayout>
   )

@@ -26,7 +26,7 @@ interface TimebombClause {
   page: number
 }
 
-function findTimebombs(result: AnalysisResult): TimebombClause[] {
+export function findTimebombs(result: AnalysisResult): TimebombClause[] {
   const items: TimebombClause[] = []
 
   for (const clause of result.clauses) {
@@ -50,7 +50,7 @@ function findTimebombs(result: AnalysisResult): TimebombClause[] {
   return items.sort((a, b) => b.riskScore - a.riskScore)
 }
 
-function TimebombContent({ result }: { result: AnalysisResult }) {
+export function TimebombContent({ result }: { result: AnalysisResult }) {
   const timebombs = findTimebombs(result)
 
   return timebombs.length === 0 ? (
@@ -100,7 +100,7 @@ function TimebombContent({ result }: { result: AnalysisResult }) {
 
 export default function TimebombPage() {
   return (
-    <ToolLayout title="Timebomb Clauses" description="Auto-renewals, escalations, and time-triggered obligations" icon={Timer}>
+    <ToolLayout title="Timebomb Clauses" description="Auto-renewals, escalations, and time-triggered obligations" icon={Timer} exportType="timebombs">
       {(result) => <TimebombContent result={result} />}
     </ToolLayout>
   )

@@ -29,11 +29,11 @@
   --color-surface-950: #fafafa;
 
   /* ── Cream palette (main app background) ── */
-  --color-cream: #FAF9F6;
-  --color-cream-100: #F5F4F0;
-  --color-cream-200: #ECEAE4;
-  --color-cream-300: #DDD9D0;
-  --color-cream-400: #C4BFB3;
+  --color-cream: #FAF9EA;
+  --color-cream-100: #F5F3E4;
+  --color-cream-200: #ECE9D8;
+  --color-cream-300: #DDD8C4;
+  --color-cream-400: #C4BEA7;
 
   /* ── Risk colors ── */
   --color-risk-low: #22c55e;
@@ -118,9 +118,9 @@
   }
 
   .glass-cream {
-    background: rgba(250, 249, 246, 0.7);
+    background: rgba(250, 249, 234, 0.7);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(221, 217, 208, 0.5);
+    border: 1px solid rgba(221, 216, 196, 0.5);
   }
 
   .glow-sm {

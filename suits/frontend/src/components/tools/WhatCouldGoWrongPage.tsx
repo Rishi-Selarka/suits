@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { staggerContainer, staggerItem } from '@/lib/motion'
 import type { AnalysisResult } from '@/api/client'
 
-function WhatCouldGoWrongContent({ result }: { result: AnalysisResult }) {
+export function WhatCouldGoWrongContent({ result }: { result: AnalysisResult }) {
   const issues = result.advisory?.critical_issues || []
   const missing = result.advisory?.missing_clauses || []
   const redRisks = result.risks?.filter(r => r.risk_level === 'RED') || []
@@ -100,7 +100,7 @@ function WhatCouldGoWrongContent({ result }: { result: AnalysisResult }) {
 
 export default function WhatCouldGoWrongPage() {
   return (
-    <ToolLayout title="What Could Go Wrong" description="Worst-case scenarios and impact analysis" icon={AlertTriangle}>
+    <ToolLayout title="What Could Go Wrong" description="Worst-case scenarios and impact analysis" icon={AlertTriangle} exportType="risk_summary">
       {(result) => <WhatCouldGoWrongContent result={result} />}
     </ToolLayout>
   )

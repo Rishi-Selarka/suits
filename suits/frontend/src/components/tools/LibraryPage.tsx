@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
-import { BookOpen, ExternalLink } from 'lucide-react'
-import { easeOutExpo, staggerContainer, staggerItem } from '@/lib/motion'
+import { BookOpen, ExternalLink, ArrowLeft } from 'lucide-react'
+import { staggerContainer, staggerItem } from '@/lib/motion'
 
 const RESOURCES = [
   { category: 'Indian Contract Law', items: [
@@ -21,23 +21,35 @@ const RESOURCES = [
   ]},
 ]
 
-export default function LibraryPage() {
+export default function LibraryPage({ onBack }: { onBack?: () => void }) {
   return (
-    <div className="flex-1 h-screen overflow-y-auto bg-cream">
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: easeOutExpo }}
-        >
-          <div className="flex items-center gap-3 mb-1">
+    <div className="flex flex-col h-screen bg-cream overflow-hidden">
+      {/* ── Header (matches ToolLayout) ── */}
+      <div className="shrink-0 px-6 pt-4 pb-3 border-b border-cream-200 bg-white/50">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-surface-400 hover:text-surface-200 hover:bg-cream-100 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
             <div className="w-9 h-9 rounded-xl bg-suits-500/10 flex items-center justify-center">
               <BookOpen className="w-[18px] h-[18px] text-suits-600" />
             </div>
-            <h1 className="text-xl font-semibold text-surface-200">Library & Sources</h1>
+            <div>
+              <h1 className="text-lg font-semibold text-surface-200">Library & Sources</h1>
+              <p className="text-xs text-cream-400">Legal references used by our analysis agents</p>
+            </div>
           </div>
-          <p className="text-sm text-cream-400 mb-8 ml-12">Legal references used by our analysis agents</p>
+        </div>
+      </div>
 
+      {/* ── Content ── */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl mx-auto px-6 py-8">
           <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8">
             {RESOURCES.map((section) => (
               <motion.div key={section.category} variants={staggerItem}>
@@ -62,7 +74,7 @@ export default function LibraryPage() {
               </motion.div>
             ))}
           </motion.div>
-        </motion.div>
+        </div>
       </div>
     </div>
   )

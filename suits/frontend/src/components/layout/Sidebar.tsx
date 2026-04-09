@@ -199,7 +199,7 @@ export default function Sidebar({
             )}
           >
             <FileText className="w-4 h-4 shrink-0 opacity-60" />
-            <span className="text-sm">Documents</span>
+            <span className="text-sm">Your Documents</span>
           </button>
         )}
 

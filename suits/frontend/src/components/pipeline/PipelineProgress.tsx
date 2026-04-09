@@ -170,11 +170,6 @@ export default function PipelineProgress({
                         {agent?.timing_ms != null && status === 'complete' && (
                           <span className="text-xs text-cream-400">{formatMs(agent.timing_ms)}</span>
                         )}
-                        {agent?.model_used && status === 'complete' && (
-                          <span className="text-[10px] text-cream-400/70 font-mono hidden sm:inline">
-                            {agent.model_used.split('/').pop()}
-                          </span>
-                        )}
                         <StatusIcon status={status} />
                       </div>
                     </motion.div>

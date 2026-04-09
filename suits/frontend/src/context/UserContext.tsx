@@ -31,6 +31,15 @@ export interface DocumentItem {
   analyzed: boolean
 }
 
+export interface DownloadItem {
+  id: string
+  documentId: string
+  filename: string
+  exportType: string
+  exportLabel: string
+  downloadedAt: number
+}
+
 interface UserContextType {
   user: UserData
   setUser: (data: Partial<UserData>) => void
@@ -40,11 +49,14 @@ interface UserContextType {
   removeChat: (id: string) => void
   documents: DocumentItem[]
   addDocument: (doc: DocumentItem) => void
+  downloads: DownloadItem[]
+  addDownload: (dl: DownloadItem) => void
 }
 
 const STORAGE_KEY = 'suits-user'
 const CHAT_HISTORY_KEY = 'suits-chats'
 const DOCUMENTS_KEY = 'suits-documents'
+const DOWNLOADS_KEY = 'suits-downloads'
 
 const defaultUser: UserData = {
   name: '',
@@ -80,10 +92,19 @@ function loadDocuments(): DocumentItem[] {
   return []
 }
 
+function loadDownloads(): DownloadItem[] {
+  try {
+    const stored = localStorage.getItem(DOWNLOADS_KEY)
+    if (stored) return JSON.parse(stored)
+  } catch { /* ignore */ }
+  return []
+}
+
 export function UserProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserData>(loadUser)
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>(loadChats)
   const [documents, setDocuments] = useState<DocumentItem[]>(loadDocuments)
+  const [downloads, setDownloads] = useState<DownloadItem[]>(loadDownloads)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
@@ -97,6 +118,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(documents))
   }, [documents])
 
+  useEffect(() => {
+    localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads))
+  }, [downloads])
+
   const setUser = (data: Partial<UserData>) => {
     setUserState(prev => ({ ...prev, ...data }))
   }
@@ -105,9 +130,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setUserState(defaultUser)
     setChatHistory([])
     setDocuments([])
+    setDownloads([])
     localStorage.removeItem(STORAGE_KEY)
     localStorage.removeItem(CHAT_HISTORY_KEY)
     localStorage.removeItem(DOCUMENTS_KEY)
+    localStorage.removeItem(DOWNLOADS_KEY)
   }
 
   const addChat = (chat: ChatHistoryItem) => {
@@ -145,8 +172,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
     })
   }
 
+  const addDownload = (dl: DownloadItem) => {
+    setDownloads(prev => [dl, ...prev].slice(0, 50))
+  }
+
   return (
-    <UserContext.Provider value={{ user, setUser, resetUser, chatHistory, addChat, removeChat, documents, addDocument }}>
+    <UserContext.Provider value={{ user, setUser, resetUser, chatHistory, addChat, removeChat, documents, addDocument, downloads, addDownload }}>
       {children}
     </UserContext.Provider>
   )

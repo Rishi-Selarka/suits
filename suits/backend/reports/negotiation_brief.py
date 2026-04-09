@@ -1,11 +1,12 @@
 """PDF report generation for Suits AI using fpdf2.
 
 Supports multiple export types: negotiation_brief, risk_summary,
-clause_report, and full_bundle.
+clause_report, full_bundle, deadlines, timebombs, trap_clauses.
 """
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from fpdf import FPDF
@@ -23,7 +24,10 @@ from models import (
 
 logger = get_logger("reports.negotiation_brief")
 
-ExportType = Literal["negotiation_brief", "risk_summary", "clause_report", "full_bundle"]
+ExportType = Literal[
+    "negotiation_brief", "risk_summary", "clause_report", "full_bundle",
+    "deadlines", "timebombs", "trap_clauses",
+]
 
 # ── Risk-level colours ───────────────────────────────────────────────────────
 _RISK_COLORS: dict[str, tuple[int, int, int]] = {
@@ -39,7 +43,28 @@ _EXPORT_TITLES: dict[str, str] = {
     "risk_summary": "RISK SUMMARY",
     "clause_report": "CLAUSE REPORT",
     "full_bundle": "FULL ANALYSIS BUNDLE",
+    "deadlines": "DEADLINE TRACKER",
+    "timebombs": "TIMEBOMB CLAUSES",
+    "trap_clauses": "TRAP CLAUSE DETECTOR",
 }
+
+# ── Patterns for deadline extraction (mirrors frontend logic) ──────────────
+_DATE_RE = re.compile(
+    r"\b(\d{1,2}[\s/-]\w+[\s/-]\d{2,4}|\w+ \d{1,2},?\s*\d{4}|\d{4}-\d{2}-\d{2})\b",
+    re.IGNORECASE,
+)
+_TIME_RE = re.compile(r"(\d+)\s*(day|week|month|year|business day)s?", re.IGNORECASE)
+
+_TIMEBOMB_KEYWORDS = [
+    "auto-renew", "automatic renewal", "automatically renew",
+    "escalation", "increase", "escalate",
+    "expire", "expiration", "expiry",
+    "notice period", "prior notice", "written notice",
+    "terminate", "termination",
+    "penalty", "liquidated damages",
+    "non-compete", "non-solicitation",
+    "lock-in", "minimum term", "commitment period",
+]
 
 
 def _safe(text: str, max_len: int = 0) -> str:
@@ -135,6 +160,15 @@ class NegotiationBriefGenerator:
                 ("missing_protections", lambda: self._section_missing_protections(pdf, analysis)),
                 ("positive_aspects", lambda: self._section_positive_aspects(pdf, analysis)),
                 ("negotiation_checklist", lambda: self._section_negotiation_checklist(pdf, analysis)),
+            ],
+            "deadlines": [
+                ("deadlines", lambda: self._section_deadlines(pdf, analysis)),
+            ],
+            "timebombs": [
+                ("timebombs", lambda: self._section_timebombs(pdf, analysis, risk_map)),
+            ],
+            "trap_clauses": [
+                ("trap_clauses", lambda: self._section_trap_clauses(pdf, analysis, risk_map)),
             ],
         }
 
@@ -429,3 +463,196 @@ class NegotiationBriefGenerator:
             pdf.ln()
 
         pdf.ln(2)
+
+    # ── Deadline Tracker ─────────────────────────────────────────────────
+
+    def _section_deadlines(self, pdf: _LegalPDF, analysis: AnalysisResult) -> None:
+        self._heading(pdf, "Deadlines & Time-Sensitive Obligations")
+
+        items: list[tuple[int, str, str, int]] = []  # (clause_id, match, title, page)
+        seen: set[str] = set()
+
+        for clause in analysis.clauses:
+            date_matches = _DATE_RE.findall(clause.text)
+            time_matches = _TIME_RE.findall(clause.text)
+            all_matches = date_matches + [f"{m[0]} {m[1]}s" for m in time_matches]
+
+            for match in all_matches:
+                key = f"{clause.clause_id}-{match}"
+                if key in seen:
+                    continue
+                seen.add(key)
+                items.append((
+                    clause.clause_id,
+                    match,
+                    clause.title or clause.text[:80],
+                    clause.page_number,
+                ))
+
+        if not items:
+            self._body(pdf, "No date references or time periods found in this document.")
+            return
+
+        self._body(pdf, f"Found {len(items)} date/time references across the document.")
+        pdf.ln(2)
+
+        col_widths = [16, 40, 110, 20]
+        headers = ["Clause", "Date / Period", "Context", "Page"]
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_fill_color(240, 240, 240)
+        pdf.set_text_color(30, 30, 30)
+        for i, h in enumerate(headers):
+            pdf.cell(col_widths[i], 6, h, border=1, fill=True)
+        pdf.ln()
+
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(50, 50, 50)
+        for clause_id, match, title, page in items:
+            pdf.cell(col_widths[0], 6, f"C{clause_id}", border=1)
+            pdf.cell(col_widths[1], 6, _safe(match, 24), border=1)
+            pdf.cell(col_widths[2], 6, _safe(title, 65), border=1)
+            pdf.cell(col_widths[3], 6, str(page), border=1)
+            pdf.ln()
+
+        pdf.ln(2)
+
+    # ── Timebomb Clauses ─────────────────────────────────────────────────
+
+    def _section_timebombs(
+        self, pdf: _LegalPDF, analysis: AnalysisResult, risk_map: dict[int, RiskResult],
+    ) -> None:
+        self._heading(pdf, "Timebomb Clauses")
+        self._body(
+            pdf,
+            "Clauses containing auto-renewals, escalations, termination triggers, "
+            "and other time-activated conditions that could impact you.",
+        )
+
+        timebombs: list[tuple[Clause, list[str], RiskResult | None]] = []
+        for clause in analysis.clauses:
+            lower = clause.text.lower()
+            matched = [kw for kw in _TIMEBOMB_KEYWORDS if kw in lower]
+            if not matched:
+                continue
+            risk = risk_map.get(clause.clause_id)
+            timebombs.append((clause, matched, risk))
+
+        timebombs.sort(key=lambda t: (t[2].risk_score if t[2] else 0), reverse=True)
+
+        if not timebombs:
+            self._body(pdf, "No timebomb clauses detected in this document.")
+            return
+
+        pdf.ln(1)
+        self._body(pdf, f"Found {len(timebombs)} clause(s) with time-triggered conditions.")
+        pdf.ln(1)
+
+        for clause, keywords, risk in timebombs:
+            risk_level = risk.risk_level if risk else "GREEN"
+            risk_score = risk.risk_score if risk else 0
+
+            self._heading(pdf, clause.title or f"Clause {clause.clause_id}", level=3)
+
+            # Risk badge
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(80, 80, 80)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(50, 5, f"Clause {clause.clause_id}  |  Page {clause.page_number}  |  ", new_x="END")
+            self._risk_badge(pdf, risk_level)
+            pdf.cell(20, 5, f"  Score: {risk_score}")
+            pdf.ln(3)
+
+            # Clause text
+            self._body(pdf, clause.text[:400])
+
+            # Keywords
+            pdf.set_font("Helvetica", "I", 8)
+            pdf.set_text_color(180, 120, 0)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(0, 5, f"Triggers: {', '.join(keywords)}", new_x="LMARGIN", new_y="NEXT")
+            pdf.ln(2)
+
+    # ── Trap Clause Detector ─────────────────────────────────────────────
+
+    def _section_trap_clauses(
+        self, pdf: _LegalPDF, analysis: AnalysisResult, risk_map: dict[int, RiskResult],
+    ) -> None:
+        self._heading(pdf, "Trap Clauses Detected")
+        self._body(
+            pdf,
+            "High-risk clauses with potentially deceptive or one-sided language "
+            "that require careful review before signing.",
+        )
+
+        simp_map = {s.clause_id: s for s in analysis.simplifications}
+        traps: list[tuple[Clause, RiskResult]] = []
+
+        for risk in analysis.risks:
+            if risk.risk_level == "RED" or risk.risk_score >= 60:
+                clause = next((c for c in analysis.clauses if c.clause_id == risk.clause_id), None)
+                if clause:
+                    traps.append((clause, risk))
+
+        traps.sort(key=lambda t: t[1].risk_score, reverse=True)
+
+        if not traps:
+            self._body(pdf, "No trap clauses detected. This document looks clean.")
+            return
+
+        pdf.ln(1)
+        self._body(pdf, f"Detected {len(traps)} potentially dangerous clause(s).")
+        pdf.ln(1)
+
+        for clause, risk in traps:
+            simp = simp_map.get(clause.clause_id)
+
+            self._heading(pdf, clause.title or f"Clause {clause.clause_id}", level=3)
+
+            # Risk info
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(80, 80, 80)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(50, 5, f"Clause {clause.clause_id}  |  Page {clause.page_number}  |  ", new_x="END")
+            self._risk_badge(pdf, risk.risk_level)
+            pdf.cell(20, 5, f"  Score: {risk.risk_score}")
+            pdf.ln(3)
+
+            # What it says
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(80, 80, 80)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(0, 5, "What it says:", new_x="LMARGIN", new_y="NEXT")
+            self._body(pdf, clause.text[:300])
+
+            # What it means (plain English)
+            if simp and simp.simplified_text:
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.set_text_color(180, 120, 0)
+                pdf.set_x(pdf.l_margin)
+                pdf.cell(0, 5, "What it actually means:", new_x="LMARGIN", new_y="NEXT")
+                self._body(pdf, simp.simplified_text)
+
+            # Hidden implication
+            if simp and simp.hidden_implications:
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.set_text_color(180, 0, 0)
+                pdf.set_x(pdf.l_margin)
+                pdf.cell(0, 5, "Hidden Implication:", new_x="LMARGIN", new_y="NEXT")
+                self._body(pdf, simp.hidden_implications)
+
+            # Flags
+            if risk.flags:
+                pdf.set_font("Helvetica", "I", 8)
+                pdf.set_text_color(180, 0, 0)
+                pdf.set_x(pdf.l_margin)
+                pdf.cell(0, 5, f"Red Flags: {', '.join(risk.flags)}", new_x="LMARGIN", new_y="NEXT")
+
+            # Suggested fix
+            if risk.suggested_modification:
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.set_text_color(0, 100, 0)
+                pdf.set_x(pdf.l_margin)
+                pdf.cell(0, 5, "Suggested Fix:", new_x="LMARGIN", new_y="NEXT")
+                self._body(pdf, risk.suggested_modification)
+
+            pdf.ln(2)

@@ -21,6 +21,9 @@ import { easeOutExpo } from '@/lib/motion'
 
 type AppView = 'chat' | 'uploading' | 'pipeline' | 'results' | string
 
+// Tool views that should stay mounted once visited (to preserve state)
+const PERSISTENT_TOOL_VIEWS = ['risk-score', 'simulator', 'deadlines', 'timebomb', 'trap-detector', 'negotiator'] as const
+
 export default function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [activeView, setActiveView] = useState<AppView>('chat')
@@ -29,6 +32,7 @@ export default function AppLayout() {
   const [activeFilename, setActiveFilename] = useState<string>('')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [cachedResult, setCachedResult] = useState<AnalysisResult | null>(null)
+  const [mountedViews, setMountedViews] = useState<Set<string>>(new Set())
 
   const analysis = useAnalysis()
   const { addDocument } = useUser()
@@ -51,11 +55,15 @@ export default function AppLayout() {
 
       // If server already has this analyzed (cached), jump to results
       if (uploadRes.status === 'cached') {
-        const result = await getResults(docId)
-        setCachedResult(result)
-        addDocument({ id: docId, filename: file.name, uploadedAt: Date.now(), analyzed: true })
-        setActiveView('results')
-        return
+        try {
+          const result = await getResults(docId)
+          setCachedResult(result)
+          addDocument({ id: docId, filename: file.name, uploadedAt: Date.now(), analyzed: true })
+          setActiveView('results')
+          return
+        } catch {
+          // Duplicate file but not yet analyzed — fall through to analysis
+        }
       }
 
       // Step 2: Trigger analysis pipeline
@@ -111,6 +119,14 @@ export default function AppLayout() {
 
   const handleViewChange = useCallback((view: string) => {
     setActiveView(view)
+    if (PERSISTENT_TOOL_VIEWS.includes(view as typeof PERSISTENT_TOOL_VIEWS[number])) {
+      setMountedViews(prev => {
+        if (prev.has(view)) return prev
+        const next = new Set(prev)
+        next.add(view)
+        return next
+      })
+    }
   }, [])
 
   const handleViewDocument = useCallback((docId: string) => {
@@ -176,19 +192,46 @@ export default function AppLayout() {
         )}
 
         {activeView === 'results' && currentResult && (
-          <ResultsDashboard result={currentResult} filename={activeFilename} onOpenChat={handleOpenChat} />
+          <ResultsDashboard result={currentResult} filename={activeFilename} onOpenChat={handleOpenChat} onBack={handleOpenChat} />
         )}
 
-        {activeView === 'settings' && <SettingsPage />}
-        {activeView === 'risk-score' && <RiskScorePage />}
-        {activeView === 'simulator' && <WhatCouldGoWrongPage />}
-        {activeView === 'deadlines' && <DeadlineTrackerPage />}
-        {activeView === 'timebomb' && <TimebombPage />}
-        {activeView === 'trap-detector' && <TrapDetectorPage />}
-        {activeView === 'negotiator' && <NegotiatorPage />}
-        {activeView === 'documents' && <DocumentsPage onViewDocument={handleViewDocument} />}
-        {activeView === 'library' && <LibraryPage />}
-        {activeView === 'downloads' && <DownloadsPage result={currentResult} />}
+        {activeView === 'settings' && <SettingsPage onBack={handleOpenChat} />}
+
+        {/* Tool pages: stay mounted once visited so state (uploads, analysis, chat) survives navigation */}
+        {mountedViews.has('risk-score') && (
+          <div style={{ display: activeView === 'risk-score' ? undefined : 'none' }} className="h-full">
+            <RiskScorePage />
+          </div>
+        )}
+        {mountedViews.has('simulator') && (
+          <div style={{ display: activeView === 'simulator' ? undefined : 'none' }} className="h-full">
+            <WhatCouldGoWrongPage />
+          </div>
+        )}
+        {mountedViews.has('deadlines') && (
+          <div style={{ display: activeView === 'deadlines' ? undefined : 'none' }} className="h-full">
+            <DeadlineTrackerPage />
+          </div>
+        )}
+        {mountedViews.has('timebomb') && (
+          <div style={{ display: activeView === 'timebomb' ? undefined : 'none' }} className="h-full">
+            <TimebombPage />
+          </div>
+        )}
+        {mountedViews.has('trap-detector') && (
+          <div style={{ display: activeView === 'trap-detector' ? undefined : 'none' }} className="h-full">
+            <TrapDetectorPage />
+          </div>
+        )}
+        {mountedViews.has('negotiator') && (
+          <div style={{ display: activeView === 'negotiator' ? undefined : 'none' }} className="h-full">
+            <NegotiatorPage />
+          </div>
+        )}
+
+        {activeView === 'documents' && <DocumentsPage onViewDocument={handleViewDocument} onBack={handleOpenChat} />}
+        {activeView === 'library' && <LibraryPage onBack={handleOpenChat} />}
+        {activeView === 'downloads' && <DownloadsPage onBack={handleOpenChat} />}
       </main>
     </motion.div>
   )
