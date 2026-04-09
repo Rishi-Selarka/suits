@@ -394,8 +394,8 @@ export default function RunAllToolsPage({ preloadResult, preloadDocumentId, prel
               <Layers className="w-[18px] h-[18px] text-suits-600" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-surface-200">Full Analysis</h1>
-              <p className="text-xs text-cream-400">All 5 tools — one document</p>
+              <h1 className="text-lg font-semibold text-surface-200">Exclusive Audit</h1>
+              <p className="text-xs text-cream-400">All 5 tools, one document</p>
             </div>
           </div>
 
@@ -460,12 +460,12 @@ export default function RunAllToolsPage({ preloadResult, preloadDocumentId, prel
                   Drop a document here or click to upload
                 </p>
                 <p className="text-xs text-cream-400">
-                  PDF, PNG, JPG, or TXT — up to 20 MB
+                  PDF, PNG, JPG, or TXT (up to 20 MB)
                 </p>
               </div>
 
               <p className="text-center text-xs text-cream-400 mt-4">
-                All 5 analysis tools will run simultaneously on your document.
+                All 5 audit tools will run simultaneously on your document.
               </p>
               <div className="mt-3 flex items-center justify-center gap-2 text-cream-400">
                 {TABS.map(tab => (
@@ -484,7 +484,7 @@ export default function RunAllToolsPage({ preloadResult, preloadDocumentId, prel
                 <Loader2 className="w-6 h-6 text-suits-500 animate-spin" />
               </div>
               <p className="text-sm font-medium text-surface-300">Uploading {filename}...</p>
-              <p className="text-xs text-cream-400 mt-1">Preparing for full analysis</p>
+              <p className="text-xs text-cream-400 mt-1">Preparing exclusive audit</p>
             </motion.div>
           </div>
         )}
@@ -773,7 +773,7 @@ export default function RunAllToolsPage({ preloadResult, preloadDocumentId, prel
                   </div>
                   <div className="text-left flex-1">
                     <p className="text-sm font-medium text-surface-300 group-hover:text-surface-200">Ask about these results</p>
-                    <p className="text-xs text-cream-400">Chat with AI about the full analysis</p>
+                    <p className="text-xs text-cream-400">Chat with AI about the audit findings</p>
                   </div>
                 </button>
               </motion.div>
@@ -825,7 +825,7 @@ export default function RunAllToolsPage({ preloadResult, preloadDocumentId, prel
             <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
               {chatMessages.length === 0 && (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-xs text-cream-400">Ask any question about the full analysis results...</p>
+                  <p className="text-xs text-cream-400">Ask any question about the audit results...</p>
                 </div>
               )}
               {chatMessages.map(msg => (

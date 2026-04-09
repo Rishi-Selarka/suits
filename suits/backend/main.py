@@ -853,7 +853,17 @@ async def document_chat_stream(
                     memory.add_message(memory_key, "user", body.message)
                     memory.add_message(memory_key, "assistant", collected)
 
-                yield json.dumps({"type": "done", "source_clauses": []})
+                # Build source references from the clauses used as context
+                source_clauses = [
+                    {
+                        "clause_id": c.get("clause_id", 0),
+                        "title": c.get("title", "Untitled"),
+                        "page": c.get("page", 1),
+                    }
+                    for c in clauses_raw[:15]
+                    if c.get("clause_id")
+                ]
+                yield json.dumps({"type": "done", "source_clauses": source_clauses})
             else:
                 from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
 

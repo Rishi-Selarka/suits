@@ -184,13 +184,13 @@ def _extract_with_ocr(file_path: str) -> str:
 
             try:
                 page_text = pytesseract.image_to_string(image)
-            if page_text:
-                pages_text.append(page_text)
-        except Exception as exc:
-            logger.warning(
-                f"OCR failed on page {page_num + 1}: {exc}",
-                extra={"status": "ocr_page_error"},
-            )
+                if page_text:
+                    pages_text.append(page_text)
+            except Exception as exc:
+                logger.warning(
+                    f"OCR failed on page {page_num + 1}: {exc}",
+                    extra={"status": "ocr_page_error"},
+                )
 
     finally:
         doc.close()

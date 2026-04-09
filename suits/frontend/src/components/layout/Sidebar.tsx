@@ -40,7 +40,7 @@ interface NavItem {
 }
 
 const TOOL_ITEMS: NavItem[] = [
-  { id: 'run-all-tools', label: 'Run All Tools', icon: Layers },
+  { id: 'run-all-tools', label: 'Exclusive Audit', icon: Layers },
   { id: 'risk-score', label: 'Risk Score', icon: Shield },
   { id: 'simulator', label: 'What Could Go Wrong', icon: AlertTriangle },
   { id: 'deadlines', label: 'Deadline Tracker', icon: Calendar },

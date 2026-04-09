@@ -171,7 +171,7 @@ export default function ResultsDashboard({ result, filename, onOpenChat, onBack,
                 whileTap={{ scale: 0.98 }}
               >
                 <Layers className="w-4 h-4" />
-                Run All 5 Tools
+                Exclusive Audit
               </motion.button>
             )}
             <motion.button

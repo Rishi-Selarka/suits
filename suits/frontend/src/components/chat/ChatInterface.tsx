@@ -289,7 +289,7 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
   const handleExportChat = useCallback(() => {
     if (messages.length === 0) return
     const lines = [
-      'Suits AI — Chat Transcript',
+      'Suits AI Chat Transcript',
       `Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
       documentId ? `Document ID: ${documentId}` : 'General conversation',
       '═'.repeat(60),

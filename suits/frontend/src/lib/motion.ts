@@ -109,14 +109,14 @@ export const scaleIn: Variants = {
 export const pipelineNode: Variants = {
   idle: {
     scale: 1,
-    boxShadow: '0 0 0px rgba(92, 124, 250, 0)',
+    boxShadow: '0 0 0px rgba(224, 119, 51, 0)',
   },
   running: {
     scale: [1, 1.05, 1],
     boxShadow: [
-      '0 0 0px rgba(92, 124, 250, 0)',
-      '0 0 30px rgba(92, 124, 250, 0.4)',
-      '0 0 0px rgba(92, 124, 250, 0)',
+      '0 0 0px rgba(224, 119, 51, 0)',
+      '0 0 30px rgba(224, 119, 51, 0.4)',
+      '0 0 0px rgba(224, 119, 51, 0)',
     ],
     transition: {
       duration: 1.5,

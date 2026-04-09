@@ -624,7 +624,7 @@ export default function NegotiatorPage() {
               </div>
               <h2 className="text-2xl font-semibold text-surface-200 mb-2">Start a Negotiation</h2>
               <p className="text-surface-400 mb-10 leading-relaxed max-w-md mx-auto">
-                Two AI agents will debate from opposing perspectives — one advocating for you, the other challenging your position.
+                Two AI agents will debate from opposing perspectives. One advocating for you, the other challenging your position.
               </p>
 
               <div className="grid grid-cols-2 gap-3 mb-8 max-w-md mx-auto">

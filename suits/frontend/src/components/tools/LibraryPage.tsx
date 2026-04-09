@@ -15,9 +15,9 @@ const RESOURCES = [
     { title: 'Industrial Disputes Act, 1947', desc: 'Labour dispute resolution', url: 'https://www.indiacode.nic.in/handle/123456789/1445' },
   ]},
   { category: 'Legal Principles', items: [
-    { title: 'Section 27 — Restraint of Trade', desc: 'Non-compete clause enforceability', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30781&sectionno=27' },
-    { title: 'Section 73 — Damages', desc: 'Compensation for breach of contract', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30827&sectionno=73' },
-    { title: 'Section 23 — Unlawful Consideration', desc: 'Void agreements and public policy', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30777&sectionno=23' },
+    { title: 'Section 27: Restraint of Trade', desc: 'Non-compete clause enforceability', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30781&sectionno=27' },
+    { title: 'Section 73: Damages', desc: 'Compensation for breach of contract', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30827&sectionno=73' },
+    { title: 'Section 23: Unlawful Consideration', desc: 'Void agreements and public policy', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30777&sectionno=23' },
   ]},
 ]
 

@@ -66,6 +66,7 @@ interface ChatMsg {
   role: 'user' | 'assistant'
   content: string
   isStreaming?: boolean
+  sources?: { clause_id: number; title?: string; page: number }[]
 }
 
 // ── Main Component ──
@@ -268,7 +269,7 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
   const handleExportChat = useCallback(() => {
     if (chatMessages.length === 0) return
     const lines = [
-      `Suits AI — ${title} Chat Transcript`,
+      `Suits AI ${title} Chat Transcript`,
       `Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`,
       filename ? `Document: ${filename}` : '',
       '═'.repeat(60),
@@ -331,13 +332,13 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
       rafRef.current = requestAnimationFrame(flushChatTokens)
     }
 
-    const onDone = (_sources: ChatResponse['source_clauses']) => {
+    const onDone = (sources: ChatResponse['source_clauses']) => {
       cancelAnimationFrame(rafRef.current)
       const remaining = tokenBufRef.current
       tokenBufRef.current = ''
       streamIdRef.current = null
       setChatMessages(prev =>
-        prev.map(m => m.id === assistantId ? { ...m, content: m.content + remaining, isStreaming: false } : m),
+        prev.map(m => m.id === assistantId ? { ...m, content: m.content + remaining, isStreaming: false, sources: sources?.length ? sources : undefined } : m),
       )
       setChatBusy(false)
     }
@@ -459,7 +460,7 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
                   Drop a document here or click to upload
                 </p>
                 <p className="text-xs text-cream-400">
-                  PDF, PNG, JPG, or TXT — up to 20 MB
+                  PDF, PNG, JPG, or TXT (up to 20 MB)
                 </p>
               </div>
 
@@ -704,6 +705,18 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
                     <span className="whitespace-pre-wrap">{msg.content}</span>
                     {msg.isStreaming && (
                       <span className="inline-block w-[2px] h-[1em] bg-suits-500 ml-0.5 align-middle streaming-cursor" />
+                    )}
+                    {!msg.isStreaming && msg.sources && msg.sources.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-cream-200 flex flex-wrap gap-1.5">
+                        {msg.sources.map(s => (
+                          <span
+                            key={s.clause_id}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cream-100 border border-cream-200 text-[10px] text-neutral-500"
+                          >
+                            §{s.clause_id}{s.title ? ` ${s.title}` : ''} · p.{s.page}
+                          </span>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
