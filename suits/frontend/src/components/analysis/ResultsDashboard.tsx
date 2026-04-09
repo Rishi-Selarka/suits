@@ -14,6 +14,7 @@ import {
   Lightbulb,
   ExternalLink,
   ArrowLeft,
+  Layers,
 } from 'lucide-react'
 import type { AnalysisResult } from '@/api/client'
 import { downloadReport } from '@/api/client'
@@ -27,6 +28,7 @@ interface ResultsDashboardProps {
   filename?: string
   onOpenChat: () => void
   onBack?: () => void
+  onRunAllTools?: () => void
 }
 
 function VerdictBadge({ verdict }: { verdict: string }) {
@@ -70,7 +72,7 @@ function RiskScoreRing({ score }: { score: number }) {
   )
 }
 
-export default function ResultsDashboard({ result, filename, onOpenChat, onBack }: ResultsDashboardProps) {
+export default function ResultsDashboard({ result, filename, onOpenChat, onBack, onRunAllTools }: ResultsDashboardProps) {
   const [expandedClause, setExpandedClause] = useState<number | null>(null)
   const [downloading, setDownloading] = useState(false)
   const { addDownload } = useUser()
@@ -161,6 +163,17 @@ export default function ResultsDashboard({ result, filename, onOpenChat, onBack 
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {onRunAllTools && (
+              <motion.button
+                onClick={onRunAllTools}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-suits-500 to-suits-600 text-white text-sm font-medium hover:from-suits-600 hover:to-suits-700 shadow-sm transition-all"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Layers className="w-4 h-4" />
+                Run All 5 Tools
+              </motion.button>
+            )}
             <motion.button
               onClick={onOpenChat}
               className="flex items-center gap-2 px-4 py-2 rounded-xl border border-cream-300 text-sm text-surface-300 hover:border-suits-500/30 hover:text-surface-200 transition-colors"
