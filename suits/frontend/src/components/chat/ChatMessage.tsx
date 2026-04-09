@@ -52,9 +52,13 @@ export default function ChatMessage({
   const isUser = role === 'user'
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(content)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err)
+    }
   }
 
   return (
@@ -62,7 +66,7 @@ export default function ChatMessage({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8, transition: { duration: 0.2 } }}
-      transition={{ delay: index * 0.05, duration: 0.4, ease: easeOutExpo }}
+      transition={{ delay: Math.min(index * 0.05, 0.5), duration: 0.4, ease: easeOutExpo }}
       className={cn(
         'group flex gap-4 px-6 py-5',
         isUser ? 'justify-end' : '',

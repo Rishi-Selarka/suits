@@ -140,14 +140,10 @@ export default function OnboardingFlow({ userName, onComplete }: OnboardingFlowP
 
   return (
     <motion.div
-      className="fixed inset-0 bg-surface flex items-center justify-center"
+      className="fixed inset-0 bg-cream flex items-center justify-center"
       animate={exiting ? { opacity: 0, scale: 1.05 } : { opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: easeOutExpo }}
     >
-      {/* Background ambient */}
-      <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-suits-600/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-suits-500/3 rounded-full blur-3xl pointer-events-none" />
-
       <div className="w-full max-w-2xl px-8 relative z-10">
         {/* Progress bar */}
         <motion.div
@@ -157,16 +153,16 @@ export default function OnboardingFlow({ userName, onComplete }: OnboardingFlowP
           transition={{ delay: 0.2, duration: 0.5 }}
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-surface-500 text-sm">
+            <span className="text-neutral-400 text-sm">
               Step {stepIndex + 1} of {STEPS.length}
             </span>
-            <span className="text-surface-600 text-sm">
+            <span className="text-neutral-500 text-sm">
               Hi, {userName}
             </span>
           </div>
-          <div className="h-1 bg-surface-300 rounded-full overflow-hidden">
+          <div className="h-1 bg-cream-200 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-gradient-to-r from-suits-600 to-suits-400 rounded-full"
+              className="h-full bg-neutral-900 rounded-full"
               animate={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
               transition={{ duration: 0.5, ease: easeOutExpo }}
             />
@@ -187,14 +183,14 @@ export default function OnboardingFlow({ userName, onComplete }: OnboardingFlowP
             {/* Header */}
             <div className="mb-10">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-xl bg-suits-500/15 flex items-center justify-center">
-                  <step.icon className="w-4 h-4 text-suits-400" />
+                <div className="w-9 h-9 rounded-xl bg-neutral-900 flex items-center justify-center">
+                  <step.icon className="w-4 h-4 text-cream" />
                 </div>
-                <h2 className="text-3xl font-light text-surface-900">
+                <h2 className="text-3xl font-light text-neutral-900">
                   {step.title}
                 </h2>
               </div>
-              <p className="text-surface-500 ml-12">{step.subtitle}</p>
+              <p className="text-neutral-500 ml-12">{step.subtitle}</p>
             </div>
 
             {/* Options grid */}
@@ -229,7 +225,7 @@ export default function OnboardingFlow({ userName, onComplete }: OnboardingFlowP
         >
           <motion.button
             onClick={handleBack}
-            className="flex items-center gap-2 text-surface-500 hover:text-surface-700 transition-colors disabled:opacity-0"
+            className="flex items-center gap-2 text-neutral-400 hover:text-neutral-900 transition-colors disabled:opacity-0"
             disabled={stepIndex === 0}
             whileHover={{ x: -2 }}
             whileTap={{ scale: 0.97 }}
@@ -241,7 +237,7 @@ export default function OnboardingFlow({ userName, onComplete }: OnboardingFlowP
           <motion.button
             onClick={handleNext}
             disabled={!canProceed}
-            className="flex items-center gap-3 px-8 py-3 rounded-xl bg-suits-600 text-white font-medium text-sm hover:bg-suits-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300"
+            className="flex items-center gap-3 px-8 py-3 rounded-xl bg-neutral-900 text-cream font-medium text-sm hover:bg-neutral-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-300"
             whileHover={canProceed ? { scale: 1.02 } : {}}
             whileTap={canProceed ? { scale: 0.98 } : {}}
           >

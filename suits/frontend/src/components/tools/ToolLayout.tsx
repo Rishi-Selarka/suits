@@ -16,7 +16,7 @@ import {
   Maximize2,
   Minimize2,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, validateUploadFile } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
 import { useUser } from '@/context/UserContext'
 import {
@@ -211,13 +211,18 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
     const file = e.target.files?.[0]
     if (!file) return
     e.target.value = ''
+    const err = validateUploadFile(file)
+    if (err) { setErrorMsg(err); return }
     handleUpload(file)
   }
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     const file = e.dataTransfer.files[0]
-    if (file) handleUpload(file)
+    if (!file) return
+    const err = validateUploadFile(file)
+    if (err) { setErrorMsg(err); return }
+    handleUpload(file)
   }, [handleUpload])
 
   const handleReset = () => {
@@ -258,7 +263,7 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
     } finally {
       setDownloading(false)
     }
-  }, [documentId, exportType, downloading])
+  }, [documentId, exportType, downloading, addDownload, filename])
 
   const handleExportChat = useCallback(() => {
     if (chatMessages.length === 0) return

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Camera, Check, MapPin, Briefcase, Target, User, LogOut, ArrowLeft } from 'lucide-react'
 import { useUser } from '@/context/UserContext'
@@ -39,6 +39,13 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
   const [profession, setProfession] = useState(user.profession)
   const [purpose, setPurpose] = useState(user.purpose)
   const [saved, setSaved] = useState(false)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => {
+    return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    }
+  }, [])
 
   const hasChanges =
     name !== user.name ||
@@ -51,10 +58,14 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
       const file = e.target.files?.[0]
       if (!file) return
       if (file.size > 2 * 1024 * 1024) return // 2MB max
+      if (!file.type.startsWith('image/')) return // must be an image
 
       const reader = new FileReader()
       reader.onload = () => {
-        setUser({ avatar: reader.result as string })
+        const result = reader.result as string
+        // Reject SVGs (potential XSS via embedded scripts)
+        if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) return
+        setUser({ avatar: result })
       }
       reader.readAsDataURL(file)
       e.target.value = ''
@@ -65,7 +76,8 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
   const handleSave = () => {
     setUser({ name, location, profession, purpose })
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
   }
 
   return (

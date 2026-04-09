@@ -84,7 +84,7 @@ export function WhatCouldGoWrongContent({ result }: { result: AnalysisResult }) 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-surface-300 truncate">{r.specific_concern || r.reasoning}</p>
                 </div>
-                <span className="text-xs text-red-500 font-medium">{r.risk_score}/100</span>
+                <span className="text-xs text-red-500 font-medium">{r.risk_score}/10</span>
               </div>
             ))}
           </div>

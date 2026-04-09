@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Calendar, List, ChevronLeft, ChevronRight } from 'lucide-react'
 import ToolLayout from './ToolLayout'
@@ -383,7 +383,7 @@ function CalendarView({ deadlines }: { deadlines: DeadlineItem[] }) {
 
 export function DeadlineTrackerContent({ result }: { result: AnalysisResult }) {
   const [view, setView] = useState<'stacked' | 'calendar'>('stacked')
-  const deadlines = extractDeadlines(result)
+  const deadlines = useMemo(() => extractDeadlines(result), [result])
 
   return (
     <div className="space-y-6">

@@ -32,10 +32,10 @@ export default function SelectCard({
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       className={cn(
-        'relative flex flex-col items-center gap-3 p-6 rounded-2xl border-2 transition-all duration-300 cursor-pointer text-center w-full',
+        'relative flex flex-col items-center gap-3 p-6 rounded-2xl border transition-all duration-300 cursor-pointer text-center w-full',
         selected
-          ? 'border-suits-500 bg-suits-500/10'
-          : 'border-surface-300 bg-surface-100/50 hover:border-surface-400 hover:bg-surface-200/50',
+          ? 'bg-neutral-900 border-neutral-900 text-white'
+          : 'bg-white border-cream-300 hover:border-neutral-900 hover:bg-neutral-900/5',
       )}
     >
       {/* Selection check */}
@@ -45,8 +45,8 @@ export default function SelectCard({
         animate={{ scale: selected ? 1 : 0, opacity: selected ? 1 : 0 }}
         transition={{ type: 'spring', stiffness: 400, damping: 20 }}
       >
-        <div className="w-5 h-5 rounded-full bg-suits-500 flex items-center justify-center">
-          <Check className="w-3 h-3 text-white" strokeWidth={3} />
+        <div className="w-5 h-5 rounded-full bg-cream flex items-center justify-center">
+          <Check className="w-3 h-3 text-neutral-900" strokeWidth={3} />
         </div>
       </motion.div>
 
@@ -56,13 +56,13 @@ export default function SelectCard({
         <div
           className={cn(
             'w-11 h-11 rounded-xl flex items-center justify-center transition-colors duration-300',
-            selected ? 'bg-suits-500/20' : 'bg-surface-300/50',
+            selected ? 'bg-white/10' : 'bg-neutral-900/5',
           )}
         >
           <Icon
             className={cn(
               'w-5 h-5 transition-colors duration-300',
-              selected ? 'text-suits-400' : 'text-surface-600',
+              selected ? 'text-white' : 'text-neutral-700',
             )}
           />
         </div>
@@ -73,13 +73,20 @@ export default function SelectCard({
         <p
           className={cn(
             'font-medium text-sm transition-colors duration-300',
-            selected ? 'text-suits-300' : 'text-surface-800',
+            selected ? 'text-white' : 'text-neutral-900',
           )}
         >
           {label}
         </p>
         {sublabel && (
-          <p className="text-xs text-surface-500 mt-1">{sublabel}</p>
+          <p
+            className={cn(
+              'text-xs mt-1 transition-colors duration-300',
+              selected ? 'text-neutral-400' : 'text-neutral-500',
+            )}
+          >
+            {sublabel}
+          </p>
         )}
       </div>
     </motion.button>

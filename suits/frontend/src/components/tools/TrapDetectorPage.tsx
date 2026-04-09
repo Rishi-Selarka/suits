@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Eye, AlertCircle } from 'lucide-react'
 import ToolLayout from './ToolLayout'
@@ -20,7 +21,7 @@ interface TrapClause {
 export function findTraps(result: AnalysisResult): TrapClause[] {
   const traps: TrapClause[] = []
 
-  const redRisks = result.risks.filter(r => r.risk_level === 'RED' || r.risk_score >= 60)
+  const redRisks = result.risks.filter(r => r.risk_level === 'RED' || r.risk_score >= 6)
 
   for (const risk of redRisks) {
     const clause = result.clauses.find(c => c.clause_id === risk.clause_id)
@@ -44,7 +45,7 @@ export function findTraps(result: AnalysisResult): TrapClause[] {
 }
 
 export function TrapDetectorContent({ result }: { result: AnalysisResult }) {
-  const traps = findTraps(result)
+  const traps = useMemo(() => findTraps(result), [result])
 
   return traps.length === 0 ? (
     <p className="text-center text-cream-400 py-12">No trap clauses detected. This document looks clean.</p>
