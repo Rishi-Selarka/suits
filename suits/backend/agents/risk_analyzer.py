@@ -16,25 +16,6 @@ from prompts.templates import RISK_ANALYZER_SYSTEM_PROMPT
 
 VALID_RISK_LEVELS = {"GREEN", "YELLOW", "RED"}
 
-VALID_RISK_PATTERNS = {
-    "ONE_SIDED_INDEMNITY",
-    "UNLIMITED_LIABILITY",
-    "UNILATERAL_TERMINATION",
-    "SILENT_AUTO_RENEWAL",
-    "BROAD_IP_ASSIGNMENT",
-    "NON_COMPETE_OVERREACH",
-    "PENALTY_CLAUSE",
-    "WAIVER_OF_RIGHTS",
-    "VAGUE_OBLIGATIONS",
-    "UNILATERAL_AMENDMENT",
-    "EXCESSIVE_NOTICE_PERIOD",
-    "HIDDEN_FEES",
-    "JURISDICTION_DISADVANTAGE",
-    "DATA_OVERREACH",
-    "SURVIVAL_CLAUSE_OVERREACH",
-    "UNREGISTERED_AGREEMENT",
-}
-
 
 class RiskAnalyzerAgent(BaseAgent):
     """Scores each clause on risk severity and flags dangerous patterns."""
@@ -122,7 +103,14 @@ class RiskAnalyzerAgent(BaseAgent):
                     f"RiskAnalyzer item {i} (clause_id={item.get('clause_id')}) "
                     f"risk_score is not an integer: {item['risk_score']!r}"
                 ) from exc
-            item["risk_score"] = max(1, min(10, score))
+            clamped = max(1, min(10, score))
+            if score != clamped:
+                self.logger.warning(
+                    f"Risk score {score} for clause_id={item.get('clause_id')} "
+                    f"clamped to {clamped}",
+                    extra={"agent": self.agent_name, "status": "warning"},
+                )
+            item["risk_score"] = clamped
 
             # risk_level: must be GREEN/YELLOW/RED
             if "risk_level" not in item:

@@ -16,6 +16,7 @@ from typing import Any
 from config import ModelConfig
 from llm_client import LLMClient
 from logging_config import get_logger
+from prompts.templates import INJECTION_DEFENSE
 
 logger = get_logger("base_agent")
 
@@ -103,7 +104,7 @@ class BaseAgent(ABC):
         try:
             response = await self.llm_client.call_with_retry(
                 self.model_config,
-                self.system_prompt(),
+                INJECTION_DEFENSE + "\n\n" + self.system_prompt(),
                 user_message,
             )
         except Exception as exc:
@@ -181,8 +182,8 @@ class BaseAgent(ABC):
         except json.JSONDecodeError:
             pass
 
-        # Regex fallback: find the first complete JSON array or object
-        match = re.search(r"(\[[\s\S]*\]|\{[\s\S]*\})", cleaned)
+        # Regex fallback: find the first complete JSON array or object (non-greedy)
+        match = re.search(r"(\[[\s\S]*?\]|\{[\s\S]*?\})", cleaned)
         if match:
             try:
                 return json.loads(match.group(1))

@@ -104,10 +104,10 @@ class BenchmarkAgent(BaseAgent):
             if level not in VALID_DEVIATION_LEVELS:
                 self.logger.warning(
                     f"Unknown deviation_level '{item['deviation_level']}' for "
-                    f"clause_id={item['clause_id']}, defaulting to STANDARD",
+                    f"clause_id={item['clause_id']}, defaulting to MODERATE_DEVIATION",
                     extra={"agent": self.agent_name, "status": "warning"},
                 )
-                level = "STANDARD"
+                level = "MODERATE_DEVIATION"
             item["deviation_level"] = level
 
             # Default optional fields

@@ -124,35 +124,34 @@ class AdvisorAgent(BaseAgent):
                 f"overall_risk_assessment should be a dict, got {type(ora).__name__}"
             )
 
-        # Validate score
-        if "score" in ora:
-            try:
-                ora["score"] = float(ora["score"])
-            except (ValueError, TypeError):
-                ora["score"] = 5.0
+        # Validate score — default to 5.0 if missing
+        try:
+            ora["score"] = float(ora.get("score", 5.0))
+        except (ValueError, TypeError):
+            ora["score"] = 5.0
 
-        # Validate level
-        if "level" in ora:
-            level = ora["level"].upper().strip()
-            if level not in VALID_RISK_LEVELS:
-                # Infer from score
-                score = ora.get("score", 5.0)
-                if score <= 3:
-                    level = "LOW_RISK"
-                elif score <= 5:
-                    level = "MODERATE_RISK"
-                elif score <= 7:
-                    level = "HIGH_RISK"
-                else:
-                    level = "CRITICAL_RISK"
-            ora["level"] = level
+        # Validate level — infer from score if missing or invalid
+        level = str(ora.get("level", "")).upper().strip()
+        if level not in VALID_RISK_LEVELS:
+            score = ora["score"]
+            if score <= 3:
+                level = "LOW_RISK"
+            elif score <= 5:
+                level = "MODERATE_RISK"
+            elif score <= 7:
+                level = "HIGH_RISK"
+            else:
+                level = "CRITICAL_RISK"
+        ora["level"] = level
 
-        # Validate verdict
-        if "verdict" in ora:
-            verdict = ora["verdict"].upper().strip()
-            if verdict not in VALID_VERDICTS:
-                verdict = "NEGOTIATE"  # safe default
-            ora["verdict"] = verdict
+        # Validate verdict — default to NEGOTIATE if missing or invalid
+        verdict = str(ora.get("verdict", "")).upper().strip()
+        if verdict not in VALID_VERDICTS:
+            verdict = "NEGOTIATE"
+        ora["verdict"] = verdict
+
+        # Ensure verdict_reasoning exists
+        ora.setdefault("verdict_reasoning", "")
 
         # Default optional top-level fields
         data.setdefault("document_summary", {})
@@ -176,7 +175,7 @@ class AdvisorAgent(BaseAgent):
             for idx, issue in enumerate(data["critical_issues"]):
                 if isinstance(issue, dict):
                     issue.setdefault("priority", idx + 1)
-                    issue.setdefault("clause_id", 0)
+                    issue.setdefault("clause_id", 1)
                     issue.setdefault("issue_title", "")
                     issue.setdefault("issue_description", "")
                     issue.setdefault("impact", "")

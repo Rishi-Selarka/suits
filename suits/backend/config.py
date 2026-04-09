@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import os
+import warnings
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -76,7 +77,21 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
+    @model_validator(mode="after")
+    def _check_api_key(self) -> "Settings":
+        if not self.openrouter_api_key:
+            warnings.warn(
+                "openrouter_api_key is empty — all LLM calls will fail. "
+                "Set OPENROUTER_API_KEY in your .env file.",
+                stacklevel=2,
+            )
+        return self
 
+
+from functools import lru_cache
+
+
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return a cached Settings instance."""
     return Settings()  # type: ignore[call-arg]
