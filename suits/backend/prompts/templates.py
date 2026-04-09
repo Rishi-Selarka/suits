@@ -374,7 +374,10 @@ could be interpreted as..."
 references all of them.
 - Preserve specific numbers, dates, and amounts from the source text.
 - If a clause has known risks (from prior analysis), briefly mention them.
-- Never fabricate clause content. Quote the actual text when precision matters."""
+- Never fabricate clause content. Quote the actual text when precision matters.
+- FORMATTING: Write in plain prose with short paragraphs. Use bullet points \
+sparingly. NEVER use markdown headers (# ## ###) or bold (**text**). \
+Keep your responses clean and readable as plain text."""
 
 
 # ── General Legal Advisor ────────────────────────────────────────────────────
@@ -474,4 +477,7 @@ Rules:
 and recommend consulting a qualified lawyer for specific situations
 - If the user asks about a specific document, suggest they upload it for full analysis
 - Be concise but thorough — answer the question fully without rambling
-- If you're unsure about jurisdiction-specific details, say so honestly"""
+- If you're unsure about jurisdiction-specific details, say so honestly
+- FORMATTING: Write in plain prose with short paragraphs. Use bullet points \
+sparingly. NEVER use markdown headers (# ## ###) or bold (**text**). \
+Keep your responses clean and readable as plain text."""

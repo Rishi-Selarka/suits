@@ -118,7 +118,7 @@ export default function ChatMessage({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cream-100 border border-cream-200 text-xs text-surface-400 hover:border-suits-500/30 hover:text-surface-300 transition-colors cursor-pointer"
               >
                 <ExternalLink className="w-3 h-3" />
-                <span>Clause {source.clause_id}, p.{source.page}</span>
+                <span>§{source.clause_id}{source.title ? ` ${source.title}` : ''} · p.{source.page}</span>
               </div>
             ))}
           </motion.div>
@@ -127,7 +127,7 @@ export default function ChatMessage({
 
       {/* User avatar */}
       {isUser && (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-surface-400 to-surface-600 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-suits-400 to-suits-600 flex items-center justify-center shrink-0 mt-1 overflow-hidden">
           {userAvatar ? (
             <img src={userAvatar} alt="" className="w-full h-full object-cover" />
           ) : (

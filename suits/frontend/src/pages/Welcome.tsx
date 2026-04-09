@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import SplashScreen from '@/components/splash/SplashScreen'
-import OnboardingVideo from '@/components/onboarding/OnboardingVideo'
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow'
 import { useUser } from '@/context/UserContext'
 
-type Phase = 'splash' | 'video' | 'onboarding' | 'done'
+type Phase = 'splash' | 'onboarding'
 
 interface WelcomeProps {
   onComplete: () => void
@@ -19,10 +18,6 @@ export default function Welcome({ onComplete }: WelcomeProps) {
   const handleNameSubmit = (name: string) => {
     setUserName(name)
     setUser({ name })
-    setPhase('video')
-  }
-
-  const handleVideoComplete = () => {
     setPhase('onboarding')
   }
 
@@ -43,10 +38,6 @@ export default function Welcome({ onComplete }: WelcomeProps) {
       <AnimatePresence mode="wait">
         {phase === 'splash' && (
           <SplashScreen key="splash" onContinue={handleNameSubmit} />
-        )}
-
-        {phase === 'video' && (
-          <OnboardingVideo key="video" onComplete={handleVideoComplete} />
         )}
 
         {phase === 'onboarding' && (

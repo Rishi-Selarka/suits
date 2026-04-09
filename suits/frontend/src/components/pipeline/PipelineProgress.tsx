@@ -35,7 +35,7 @@ const AGENT_META: Record<string, { label: string; icon: typeof FileText; wave: n
   verifier:      { label: 'Verification',            icon: ShieldCheck, wave: 3 },
 }
 
-const WAVE_LABELS = ['Ingestion', 'Wave 1 — Parallel', 'Wave 2 — Parallel', 'Wave 3 — Sequential']
+const WAVE_LABELS = ['Ingestion', 'Wave 1 (Parallel)', 'Wave 2 (Parallel)', 'Wave 3 (Sequential)']
 
 function StatusIcon({ status }: { status: string }) {
   switch (status) {
@@ -87,9 +87,9 @@ export default function PipelineProgress({
             className="mx-auto mb-4 w-14 h-14 rounded-2xl bg-surface-100 border border-surface-300/50 flex items-center justify-center"
             animate={pipelineStatus === 'running' ? {
               boxShadow: [
-                '0 0 0px rgba(92, 124, 250, 0)',
-                '0 0 30px rgba(92, 124, 250, 0.3)',
-                '0 0 0px rgba(92, 124, 250, 0)',
+                '0 0 0px rgba(224, 119, 51, 0)',
+                '0 0 30px rgba(224, 119, 51, 0.3)',
+                '0 0 0px rgba(224, 119, 51, 0)',
               ],
             } : {}}
             transition={{ duration: 2, repeat: Infinity }}

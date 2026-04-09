@@ -151,7 +151,7 @@ export interface AnalysisResult {
 
 export interface ChatResponse {
   answer: string
-  source_clauses: { clause_id: number; text: string; page: number }[]
+  source_clauses: { clause_id: number; title?: string; text?: string; page: number }[]
 }
 
 // ── API functions ──

@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── Brand palette ── */
-  --color-suits-50: #f0f4ff;
-  --color-suits-100: #dbe4ff;
-  --color-suits-200: #bac8ff;
-  --color-suits-300: #91a7ff;
-  --color-suits-400: #748ffc;
-  --color-suits-500: #5c7cfa;
-  --color-suits-600: #4c6ef5;
-  --color-suits-700: #4263eb;
-  --color-suits-800: #3b5bdb;
-  --color-suits-900: #364fc7;
-  --color-suits-950: #1e2a5e;
+  /* ── Brand palette (Claude orange) ── */
+  --color-suits-50: #fef6ee;
+  --color-suits-100: #fdeaD7;
+  --color-suits-200: #f9d0ae;
+  --color-suits-300: #f5ad7a;
+  --color-suits-400: #e07733;
+  --color-suits-500: #da6b2b;
+  --color-suits-600: #c85a1e;
+  --color-suits-700: #a6451a;
+  --color-suits-800: #85381c;
+  --color-suits-900: #6c3019;
+  --color-suits-950: #3a160b;
 
   /* ── Dark surface (sidebar, splash, onboarding) ── */
   --color-surface: #09090b;
