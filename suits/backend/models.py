@@ -35,7 +35,7 @@ class ClassificationResult(BaseModel):
     clause_id: int
     category: str
     subcategory: str
-    confidence: float = 1.0
+    confidence: float = Field(default=1.0, ge=0, le=1)
     secondary_category: str | None = None
 
 
@@ -50,7 +50,7 @@ class SimplificationResult(BaseModel):
 
 class RiskResult(BaseModel):
     clause_id: int
-    risk_score: int
+    risk_score: int = Field(ge=1, le=10)
     risk_level: Literal["GREEN", "YELLOW", "RED"]
     perspective: str = ""
     flags: list[str] = Field(default_factory=list)
@@ -101,7 +101,7 @@ class DocumentSummary(BaseModel):
 
 
 class OverallRiskAssessment(BaseModel):
-    score: float
+    score: float = Field(ge=0, le=10)
     level: Literal["LOW_RISK", "MODERATE_RISK", "HIGH_RISK", "CRITICAL_RISK"]
     verdict: Literal["SIGN", "NEGOTIATE", "WALK_AWAY"]
     verdict_reasoning: str = ""
@@ -158,7 +158,7 @@ class UploadResponse(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(max_length=50000)
     conversation_id: str | None = None
 
 
@@ -174,7 +174,7 @@ class CompareRequest(BaseModel):
 
 class SSEEvent(BaseModel):
     agent: str
-    status: Literal["running", "complete", "error", "cached"]
+    status: Literal["running", "complete", "error", "cached", "skipped"]
     data: dict[str, Any] | None = None
     timing_ms: int | None = None
     model_used: str | None = None
@@ -232,7 +232,7 @@ class UserUpdateRequest(BaseModel):
 
 
 class NegotiateRequest(BaseModel):
-    message: str
+    message: str = Field(max_length=50000)
     document_id: str | None = None
     rounds: int = Field(default=3, ge=1, le=5)
 

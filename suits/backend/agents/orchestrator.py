@@ -263,6 +263,8 @@ class AgentOrchestrator:
 
     # ── Helpers ──────────────────────────────────────────────────────────
 
+    AGENT_TIMEOUT = 180  # seconds per individual agent
+
     async def _run_agent(
         self, agent: Any, **kwargs: Any
     ) -> dict[str, Any]:
@@ -271,7 +273,17 @@ class AgentOrchestrator:
         Returns the agent result dict on success or re-raises on failure.
         """
         try:
-            return await agent.run(**kwargs)
+            return await asyncio.wait_for(
+                agent.run(**kwargs), timeout=self.AGENT_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                f"Agent {agent.agent_name} timed out after {self.AGENT_TIMEOUT}s",
+                extra={"agent": agent.agent_name, "status": "failed"},
+            )
+            raise AgentExecutionError(
+                f"{agent.agent_name}: timed out after {self.AGENT_TIMEOUT}s"
+            )
         except (AgentParseError, AgentValidationError, AgentExecutionError) as exc:
             logger.error(
                 f"Agent {agent.agent_name} failed: {exc}",
@@ -432,8 +444,12 @@ def _safe_parse_list(
             # Remove internal hallucination warning keys before parsing
             clean = {k: v for k, v in item.items() if not k.startswith("_")}
             result.append(model_class(**clean))
-        except Exception:
+        except Exception as exc:
             # Skip items that don't fit the model rather than failing
+            logger.warning(
+                f"Dropped malformed item: {exc}",
+                extra={"agent": "orchestrator", "status": "warning"},
+            )
             continue
     return result
 

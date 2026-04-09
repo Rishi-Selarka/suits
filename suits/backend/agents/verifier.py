@@ -128,4 +128,34 @@ class VerifierAgent(BaseAgent):
         data.setdefault("negotiation_priority_order", [])
         data.setdefault("executive_summary", "")
 
+        # Re-validate overall_risk_assessment sub-fields (verifier may have modified them)
+        ora = data["overall_risk_assessment"]
+        if isinstance(ora, dict) and ora:
+            VALID_LEVELS = {"LOW_RISK", "MODERATE_RISK", "HIGH_RISK", "CRITICAL_RISK"}
+            VALID_VERDICTS = {"SIGN", "NEGOTIATE", "WALK_AWAY"}
+
+            try:
+                ora["score"] = float(ora.get("score", 5.0))
+            except (ValueError, TypeError):
+                ora["score"] = 5.0
+
+            level = str(ora.get("level", "")).upper().strip()
+            if level not in VALID_LEVELS:
+                score = ora["score"]
+                if score <= 3:
+                    level = "LOW_RISK"
+                elif score <= 5:
+                    level = "MODERATE_RISK"
+                elif score <= 7:
+                    level = "HIGH_RISK"
+                else:
+                    level = "CRITICAL_RISK"
+            ora["level"] = level
+
+            verdict = str(ora.get("verdict", "")).upper().strip()
+            if verdict not in VALID_VERDICTS:
+                verdict = "NEGOTIATE"
+            ora["verdict"] = verdict
+            ora.setdefault("verdict_reasoning", "")
+
         return data

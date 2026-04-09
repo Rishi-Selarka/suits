@@ -93,6 +93,13 @@ class ClassifierAgent(BaseAgent):
                 raise AgentValidationError(
                     f"Classifier item {i} missing 'clause_id'"
                 )
+            try:
+                item["clause_id"] = int(item["clause_id"])
+            except (ValueError, TypeError):
+                self.logger.warning(
+                    f"Non-numeric clause_id '{item['clause_id']}' in item {i}, keeping as-is",
+                    extra={"agent": self.agent_name, "status": "warning"},
+                )
             if "category" not in item:
                 raise AgentValidationError(
                     f"Classifier item {i} (clause_id={item.get('clause_id')}) "
