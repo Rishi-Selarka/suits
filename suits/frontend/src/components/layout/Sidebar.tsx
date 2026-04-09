@@ -10,6 +10,7 @@ import {
   Timer,
   Eye,
   Swords,
+  Layers,
   BookOpen,
   Download,
   Settings,
@@ -39,6 +40,7 @@ interface NavItem {
 }
 
 const TOOL_ITEMS: NavItem[] = [
+  { id: 'run-all-tools', label: 'Run All Tools', icon: Layers },
   { id: 'risk-score', label: 'Risk Score', icon: Shield },
   { id: 'simulator', label: 'What Could Go Wrong', icon: AlertTriangle },
   { id: 'deadlines', label: 'Deadline Tracker', icon: Calendar },
@@ -229,22 +231,28 @@ export default function Sidebar({
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {TOOL_ITEMS.map(item => (
-                  <button
-                    key={item.id}
-                    onClick={() => onViewChange(item.id)}
-                    className={cn(
-                      'w-full flex items-center gap-2.5 rounded-lg transition-colors duration-150',
-                      collapsed ? 'p-2.5 justify-center' : 'px-2.5 py-2',
-                      activeView === item.id
-                        ? 'bg-surface-200 text-surface-900'
-                        : 'text-surface-600 hover:bg-surface-200/60 hover:text-surface-800',
+                {TOOL_ITEMS.map((item, idx) => (
+                  <div key={item.id}>
+                    <button
+                      onClick={() => onViewChange(item.id)}
+                      className={cn(
+                        'w-full flex items-center gap-2.5 rounded-lg transition-colors duration-150',
+                        collapsed ? 'p-2.5 justify-center' : 'px-2.5 py-2',
+                        item.id === 'run-all-tools' && activeView !== item.id
+                          ? 'text-suits-400 hover:bg-suits-500/10 hover:text-suits-300 font-medium'
+                          : activeView === item.id
+                            ? 'bg-surface-200 text-surface-900'
+                            : 'text-surface-600 hover:bg-surface-200/60 hover:text-surface-800',
+                      )}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      <item.icon className="w-4 h-4 shrink-0" />
+                      {!collapsed && <span className="text-sm">{item.label}</span>}
+                    </button>
+                    {item.id === 'run-all-tools' && !collapsed && (
+                      <div className="mx-2 my-1.5 border-t border-surface-300/20" />
                     )}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    <item.icon className="w-4 h-4 shrink-0" />
-                    {!collapsed && <span className="text-sm">{item.label}</span>}
-                  </button>
+                  </div>
                 ))}
               </motion.div>
             )}

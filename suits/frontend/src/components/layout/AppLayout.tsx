@@ -11,6 +11,7 @@ import DeadlineTrackerPage from '@/components/tools/DeadlineTrackerPage'
 import TimebombPage from '@/components/tools/TimebombPage'
 import TrapDetectorPage from '@/components/tools/TrapDetectorPage'
 import NegotiatorPage from '@/components/tools/NegotiatorPage'
+import RunAllToolsPage from '@/components/tools/RunAllToolsPage'
 import DocumentsPage from '@/components/tools/DocumentsPage'
 import LibraryPage from '@/components/tools/LibraryPage'
 import DownloadsPage from '@/components/tools/DownloadsPage'
@@ -22,7 +23,7 @@ import { easeOutExpo } from '@/lib/motion'
 type AppView = 'chat' | 'uploading' | 'pipeline' | 'results' | string
 
 // Tool views that should stay mounted once visited (to preserve state)
-const PERSISTENT_TOOL_VIEWS = ['risk-score', 'simulator', 'deadlines', 'timebomb', 'trap-detector', 'negotiator'] as const
+const PERSISTENT_TOOL_VIEWS = ['run-all-tools', 'risk-score', 'simulator', 'deadlines', 'timebomb', 'trap-detector', 'negotiator'] as const
 
 export default function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -129,6 +130,18 @@ export default function AppLayout() {
     }
   }, [])
 
+  // ── Run All Tools (preload from results view) ──
+  const [runAllPreload, setRunAllPreload] = useState<AnalysisResult | null>(null)
+  const [runAllDocId, setRunAllDocId] = useState<string | undefined>()
+  const [runAllFilename, setRunAllFilename] = useState('')
+
+  const handleRunAllTools = useCallback(() => {
+    setRunAllPreload(currentResult)
+    setRunAllDocId(activeDocumentId)
+    setRunAllFilename(activeFilename)
+    handleViewChange('run-all-tools')
+  }, [currentResult, activeDocumentId, activeFilename, handleViewChange])
+
   const handleViewDocument = useCallback((docId: string) => {
     setActiveDocumentId(docId)
     // Try to load results for this document
@@ -192,12 +205,21 @@ export default function AppLayout() {
         )}
 
         {activeView === 'results' && currentResult && (
-          <ResultsDashboard result={currentResult} filename={activeFilename} onOpenChat={handleOpenChat} onBack={handleOpenChat} />
+          <ResultsDashboard result={currentResult} filename={activeFilename} onOpenChat={handleOpenChat} onBack={handleOpenChat} onRunAllTools={handleRunAllTools} />
         )}
 
         {activeView === 'settings' && <SettingsPage onBack={handleOpenChat} />}
 
         {/* Tool pages: stay mounted once visited so state (uploads, analysis, chat) survives navigation */}
+        {mountedViews.has('run-all-tools') && (
+          <div style={{ display: activeView === 'run-all-tools' ? undefined : 'none' }} className="h-full">
+            <RunAllToolsPage
+              preloadResult={runAllPreload}
+              preloadDocumentId={runAllDocId}
+              preloadFilename={runAllFilename}
+            />
+          </div>
+        )}
         {mountedViews.has('risk-score') && (
           <div style={{ display: activeView === 'risk-score' ? undefined : 'none' }} className="h-full">
             <RiskScorePage />
