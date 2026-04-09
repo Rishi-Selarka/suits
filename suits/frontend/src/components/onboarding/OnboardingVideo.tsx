@@ -11,14 +11,29 @@ export default function OnboardingVideo({ onComplete }: OnboardingVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [show, setShow] = useState(true)
   const [videoError, setVideoError] = useState(false)
+  const [fading, setFading] = useState(false)
+  const [videoReady, setVideoReady] = useState(false)
 
   const handleComplete = useCallback(() => {
-    setShow(false)
-    setTimeout(onComplete, 600)
-  }, [onComplete])
+    if (fading) return
+    setFading(true)
+    setTimeout(() => {
+      setShow(false)
+      setTimeout(onComplete, 100)
+    }, 800)
+  }, [onComplete, fading])
 
+  // Cut video 1.5s early
+  const handleTimeUpdate = useCallback(() => {
+    const video = videoRef.current
+    if (!video || fading) return
+    if (video.duration && video.currentTime >= video.duration - 1.5) {
+      handleComplete()
+    }
+  }, [fading, handleComplete])
+
+  // Fallback: if video fails or doesn't load, skip after a brief pause
   useEffect(() => {
-    // If no video available, skip after a brief dramatic pause
     const timeout = setTimeout(() => {
       if (videoError || !videoRef.current?.src) {
         handleComplete()
@@ -31,25 +46,38 @@ export default function OnboardingVideo({ onComplete }: OnboardingVideoProps) {
     <AnimatePresence>
       {show && (
         <motion.div
-          className="fixed inset-0 z-50 bg-surface flex items-center justify-center"
+          className="fixed inset-0 z-50 bg-cream flex items-center justify-center overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, scale: 1.05 }}
-          transition={{ duration: 0.6, ease: easeOutExpo }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5, ease: easeOutExpo }}
         >
-          {/* Video */}
+          {/* Video — fades in once loaded, scaled up to crop edges */}
           {!videoError && (
-            <video
+            <motion.video
               ref={videoRef}
               src={ASSETS.onboardingVideo}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover scale-[1.15] origin-center"
               autoPlay
               muted
               playsInline
+              onCanPlay={() => setVideoReady(true)}
               onEnded={handleComplete}
+              onTimeUpdate={handleTimeUpdate}
               onError={() => setVideoError(true)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: videoReady && !fading ? 1 : 0 }}
+              transition={{ duration: fading ? 0.8 : 1.2, ease: 'easeInOut' }}
             />
           )}
+
+          {/* Cream overlay — visible at start, fades out as video appears, fades back in on exit */}
+          <motion.div
+            className="absolute inset-0 bg-cream pointer-events-none"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: fading ? 1 : videoReady ? 0 : 1 }}
+            transition={{ duration: fading ? 0.8 : 1.2, ease: 'easeInOut' }}
+          />
 
           {/* Fallback: animated brand reveal if no video */}
           {videoError && (
@@ -63,36 +91,28 @@ export default function OnboardingVideo({ onComplete }: OnboardingVideoProps) {
                 src="/images/suits-logo.png"
                 alt="Suits AI"
                 className="w-20 h-20 object-contain mb-6"
-                animate={{
-                  filter: [
-                    'drop-shadow(0 0 0px rgba(92, 124, 250, 0))',
-                    'drop-shadow(0 0 30px rgba(92, 124, 250, 0.4))',
-                    'drop-shadow(0 0 0px rgba(92, 124, 250, 0))',
-                  ],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8, ease: easeOutExpo }}
               />
               <motion.p
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5, duration: 0.6 }}
-                className="text-surface-600 text-lg tracking-widest uppercase"
+                className="text-neutral-900 text-lg tracking-widest uppercase font-semibold"
               >
                 Suits AI
               </motion.p>
             </motion.div>
           )}
 
-          {/* Vignette overlay */}
-          <div className="absolute inset-0 video-vignette pointer-events-none" />
-
           {/* Skip button */}
           <motion.button
             onClick={handleComplete}
-            className="absolute top-8 right-8 text-surface-500 hover:text-surface-700 text-sm font-medium tracking-wide transition-colors z-10"
+            className="absolute top-8 right-8 text-white/60 hover:text-white text-sm font-medium tracking-wide transition-colors z-10"
             initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1, duration: 0.5 }}
+            animate={{ opacity: fading ? 0 : videoReady ? 1 : 0 }}
+            transition={{ delay: videoReady ? 0 : 1, duration: 0.5 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
