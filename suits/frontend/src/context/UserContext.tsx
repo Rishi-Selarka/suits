@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 
 export interface UserData {
   name: string
@@ -13,6 +13,8 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  sources?: { clause_id: number; text: string; page: number }[]
+  timestamp?: number
 }
 
 export interface ChatHistoryItem {
@@ -137,7 +139,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(DOWNLOADS_KEY)
   }
 
-  const addChat = (chat: ChatHistoryItem) => {
+  const addChat = useCallback((chat: ChatHistoryItem) => {
     setChatHistory(prev => {
       const idx = prev.findIndex(c => c.id === chat.id)
       if (idx >= 0) {
@@ -154,13 +156,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
       return [chat, ...prev].slice(0, 20)
     })
-  }
+  }, [])
 
-  const removeChat = (id: string) => {
+  const removeChat = useCallback((id: string) => {
     setChatHistory(prev => prev.filter(c => c.id !== id))
-  }
+  }, [])
 
-  const addDocument = (doc: DocumentItem) => {
+  const addDocument = useCallback((doc: DocumentItem) => {
     setDocuments(prev => {
       const existing = prev.findIndex(d => d.id === doc.id)
       if (existing >= 0) {
@@ -170,14 +172,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
       }
       return [doc, ...prev]
     })
-  }
+  }, [])
 
-  const addDownload = (dl: DownloadItem) => {
+  const addDownload = useCallback((dl: DownloadItem) => {
     setDownloads(prev => [dl, ...prev].slice(0, 50))
-  }
+  }, [])
+
+  const value = useMemo(() => ({
+    user, setUser, resetUser, chatHistory, addChat, removeChat, documents, addDocument, downloads, addDownload,
+  }), [user, setUser, resetUser, chatHistory, addChat, removeChat, documents, addDocument, downloads, addDownload])
 
   return (
-    <UserContext.Provider value={{ user, setUser, resetUser, chatHistory, addChat, removeChat, documents, addDocument, downloads, addDownload }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   )

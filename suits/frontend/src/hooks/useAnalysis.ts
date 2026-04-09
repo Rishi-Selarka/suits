@@ -25,6 +25,7 @@ export function useAnalysis() {
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const abortRef = useRef(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const reset = useCallback(() => {
     setAgents({})
@@ -32,11 +33,16 @@ export function useAnalysis() {
     setResult(null)
     setError(null)
     abortRef.current = false
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
   }, [])
 
   const runAnalysis = useCallback(async (documentId: string) => {
     reset()
     setPipelineStatus('running')
+
+    const controller = new AbortController()
+    abortControllerRef.current = controller
 
     // Init agent states
     const initial: Record<string, AgentState> = {}
@@ -87,14 +93,18 @@ export function useAnalysis() {
         }
       },
       (errMsg) => {
+        if (controller.signal.aborted) return
         setPipelineStatus('error')
         setError(errMsg)
       },
+      controller.signal,
     )
   }, [reset])
 
   const abort = useCallback(() => {
     abortRef.current = true
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
     setPipelineStatus('error')
     setError('Aborted by user')
   }, [])
