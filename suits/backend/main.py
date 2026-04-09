@@ -837,7 +837,7 @@ async def generate_report(
             detail="Document has not been analysed yet. Run /api/analyze first.",
         )
 
-    valid_types = {"negotiation_brief", "risk_summary", "clause_report", "full_bundle"}
+    valid_types = {"negotiation_brief", "risk_summary", "clause_report", "full_bundle", "deadlines", "timebombs", "trap_clauses"}
     if export_type not in valid_types:
         raise HTTPException(
             status_code=400,

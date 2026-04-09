@@ -13,9 +13,11 @@ import {
   FileWarning,
   Lightbulb,
   ExternalLink,
+  ArrowLeft,
 } from 'lucide-react'
 import type { AnalysisResult } from '@/api/client'
 import { downloadReport } from '@/api/client'
+import { useUser } from '@/context/UserContext'
 import { cn } from '@/lib/utils'
 import { formatMs, riskColor, riskBg, riskLabel } from '@/lib/utils'
 import { easeOutExpo, staggerContainer, staggerItem } from '@/lib/motion'
@@ -24,6 +26,7 @@ interface ResultsDashboardProps {
   result: AnalysisResult
   filename?: string
   onOpenChat: () => void
+  onBack?: () => void
 }
 
 function VerdictBadge({ verdict }: { verdict: string }) {
@@ -67,9 +70,10 @@ function RiskScoreRing({ score }: { score: number }) {
   )
 }
 
-export default function ResultsDashboard({ result, filename, onOpenChat }: ResultsDashboardProps) {
+export default function ResultsDashboard({ result, filename, onOpenChat, onBack }: ResultsDashboardProps) {
   const [expandedClause, setExpandedClause] = useState<number | null>(null)
   const [downloading, setDownloading] = useState(false)
+  const { addDownload } = useUser()
 
   const advisory = result.advisory
   const overall = advisory?.overall_risk_assessment
@@ -111,6 +115,14 @@ export default function ResultsDashboard({ result, filename, onOpenChat }: Resul
       a.download = `${filename?.replace(/\.[^.]+$/, '') || 'report'}_negotiation_brief.pdf`
       a.click()
       URL.revokeObjectURL(url)
+      addDownload({
+        id: crypto.randomUUID(),
+        documentId: result.document_id,
+        filename: filename || 'document',
+        exportType: 'negotiation_brief',
+        exportLabel: 'Negotiation Brief',
+        downloadedAt: Date.now(),
+      })
     } catch {
       // silent fail for MVP
     } finally {
@@ -128,7 +140,16 @@ export default function ResultsDashboard({ result, filename, onOpenChat }: Resul
           transition={{ duration: 0.6, ease: easeOutExpo }}
           className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8"
         >
-          <div>
+          <div className="flex items-center gap-3">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-surface-400 hover:text-surface-200 hover:bg-cream-100 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <div>
             <h1 className="text-2xl font-semibold text-surface-200 mb-1">Analysis Complete</h1>
             {filename && <p className="text-sm text-cream-400">{filename}</p>}
             {result.total_analysis_time_ms > 0 && (
@@ -137,6 +158,7 @@ export default function ResultsDashboard({ result, filename, onOpenChat }: Resul
                 {formatMs(result.total_analysis_time_ms)} total
               </p>
             )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <motion.button
@@ -410,7 +432,6 @@ export default function ResultsDashboard({ result, filename, onOpenChat }: Resul
                 <div key={t.agent} className="p-3 rounded-xl border border-cream-200 bg-white/30">
                   <p className="text-xs text-cream-400 capitalize mb-0.5">{t.agent.replace(/_/g, ' ')}</p>
                   <p className="text-sm font-medium text-surface-300">{formatMs(t.timing_ms)}</p>
-                  <p className="text-[10px] text-cream-400/70 font-mono truncate">{t.model_used.split('/').pop()}</p>
                 </div>
               ))}
             </div>

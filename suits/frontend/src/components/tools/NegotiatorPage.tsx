@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Swords,
   ArrowUp,
+  ArrowLeft,
   Paperclip,
   Download,
   RotateCcw,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
+import { useUser } from '@/context/UserContext'
 import { negotiateStream, uploadDocument, type NegotiateEvent } from '@/api/client'
 
 // ── Types ──
@@ -134,6 +136,7 @@ export default function NegotiatorPage() {
   const streamMsgIdRef = useRef<string | null>(null)
   const isSubmittingRef = useRef(false)
 
+  const { addDownload } = useUser()
   const isBusy = status === 'running' || status === 'concluding'
   const canSend = inputValue.trim().length > 0 && !isBusy
 
@@ -363,6 +366,14 @@ export default function NegotiatorPage() {
     a.download = `negotiation-${topic.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}.txt`
     a.click()
     URL.revokeObjectURL(url)
+    addDownload({
+      id: crypto.randomUUID(),
+      documentId: documentId || 'negotiation',
+      filename: uploadedFilename || topic.slice(0, 40),
+      exportType: 'negotiation_transcript',
+      exportLabel: 'Negotiation Transcript',
+      downloadedAt: Date.now(),
+    })
   }
 
   // ── Split messages by agent ──
@@ -478,6 +489,14 @@ export default function NegotiatorPage() {
       <div className="shrink-0 px-6 pt-4 pb-3 border-b border-cream-200 bg-white/50">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
+            {status !== 'idle' && (
+              <button
+                onClick={handleReset}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-surface-400 hover:text-surface-200 hover:bg-cream-100 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-sm">
               <Swords className="w-[18px] h-[18px] text-white" />
             </div>

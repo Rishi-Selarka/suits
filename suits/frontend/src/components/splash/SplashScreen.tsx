@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
-import { ASSETS } from '@/lib/assets'
+import { ArrowRight, Scale } from 'lucide-react'
 import { easeOutExpo } from '@/lib/motion'
 
 interface SplashScreenProps {
@@ -10,7 +9,6 @@ interface SplashScreenProps {
 
 export default function SplashScreen({ onContinue }: SplashScreenProps) {
   const [name, setName] = useState('')
-  const [imageLoaded, setImageLoaded] = useState(false)
   const [exiting, setExiting] = useState(false)
 
   const canContinue = name.trim().length >= 2
@@ -29,67 +27,35 @@ export default function SplashScreen({ onContinue }: SplashScreenProps) {
           exit={{ opacity: 0, scale: 1.02 }}
           transition={{ duration: 0.8, ease: easeOutExpo }}
         >
-          {/* ── Background image layer ── */}
-          <div className="absolute inset-0 w-[60%] h-full hidden lg:block">
-            <motion.img
-              src={ASSETS.splashHero}
+          {/* ── Hero image (left half) ── */}
+          <motion.div
+            className="hidden lg:block w-1/2 relative"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1.2, ease: easeOutExpo }}
+          >
+            <img
+              src="/images/splash-hero.jpg"
               alt=""
               className="absolute inset-0 w-full h-full object-cover"
-              initial={{ scale: 1.08, opacity: 0 }}
-              animate={{
-                scale: imageLoaded ? 1 : 1.08,
-                opacity: imageLoaded ? 1 : 0,
-              }}
-              transition={{ duration: 2.2, ease: easeOutExpo }}
-              onLoad={() => setImageLoaded(true)}
             />
+            <div className="splash-mask absolute inset-0" />
+          </motion.div>
 
-            {/* Right edge fade — image melts into the dark surface */}
-            <div className="absolute inset-0 splash-mask" />
-
-            {/* Warm cinematic tint overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-suits-950/40 via-transparent to-surface/50 mix-blend-multiply" />
-
-            {/* Bottom vignette for depth */}
-            <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/30 to-transparent" />
-
-            {/* Top vignette — subtle */}
-            <div className="absolute inset-0 bg-gradient-to-b from-surface/50 via-transparent to-transparent" />
-
-            {/* Subtle blue accent glow at the fade edge */}
-            <motion.div
-              className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-suits-600/8 to-transparent"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: imageLoaded ? 1 : 0 }}
-              transition={{ duration: 2, delay: 0.5 }}
-            />
-          </div>
-
-          {/* ── Mobile: subtle background glow instead of image ── */}
-          <div className="absolute inset-0 lg:hidden">
-            <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-suits-600/8 rounded-full blur-[120px]" />
-          </div>
-
-          {/* ── Right: Name input area ── */}
-          <div className="flex-1 flex items-center justify-center px-8 lg:px-16 relative z-10 lg:ml-[40%]">
-            {/* Ambient glow behind form */}
-            <motion.div
-              className="absolute top-1/3 right-1/4 w-96 h-96 bg-suits-600/5 rounded-full blur-3xl pointer-events-none"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 2, delay: 1 }}
-            />
-
-            <div className="w-full max-w-md relative z-10">
+          {/* ── Form area (right half / full on mobile) ── */}
+          <div className="flex-1 flex items-center justify-center px-8 lg:px-16 relative z-10">
+            <div className="w-full max-w-md">
               {/* Brand mark */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.8, ease: easeOutExpo }}
-                className="mb-16"
+                className="mb-14"
               >
-                <div className="flex items-center gap-3 mb-2">
-                  <img src="/images/suits-logo.png" alt="Suits AI" className="w-8 h-8 object-contain" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-suits-500/10 flex items-center justify-center">
+                    <Scale className="w-5 h-5 text-suits-400" />
+                  </div>
                   <span className="text-surface-600 text-sm font-medium tracking-widest uppercase">
                     Suits AI
                   </span>
@@ -101,70 +67,63 @@ export default function SplashScreen({ onContinue }: SplashScreenProps) {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5, duration: 0.8, ease: easeOutExpo }}
-                className="text-4xl lg:text-5xl font-light text-surface-800 leading-tight mb-4"
+                className="text-4xl lg:text-5xl font-light text-surface-800 leading-tight mb-3"
               >
-                What would you like
+                What should we
                 <br />
-                us to call you?
+                call you?
               </motion.h1>
 
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.7, duration: 0.6 }}
-                className="text-surface-500 text-lg mb-12"
+                className="text-surface-500 text-base mb-10"
               >
                 Your legal intelligence, tailored to you.
               </motion.p>
 
-              {/* Name input */}
+              {/* Name input card */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9, duration: 0.7, ease: easeOutExpo }}
+                className="bg-surface-50 rounded-2xl border border-surface-300 p-6"
               >
-                <div className="relative group">
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                    placeholder="Enter your name"
-                    autoFocus
-                    className="w-full bg-transparent text-2xl text-surface-900 font-light placeholder:text-surface-400 border-b-2 border-surface-300 focus:border-suits-500 pb-4 outline-none transition-colors duration-500 caret-suits-500"
-                  />
-                  <motion.div
-                    className="absolute bottom-0 left-0 h-0.5 bg-suits-500"
-                    initial={{ width: '0%' }}
-                    animate={{ width: name ? '100%' : '0%' }}
-                    transition={{ duration: 0.4, ease: easeOutExpo }}
-                  />
-                </div>
-              </motion.div>
+                <label className="block text-xs font-medium text-surface-500 uppercase tracking-wider mb-3">
+                  Your name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                  placeholder="Enter your name"
+                  autoFocus
+                  className="w-full bg-surface-100 text-lg text-surface-900 placeholder:text-surface-400 rounded-xl px-4 py-3 outline-none border border-surface-300 focus:border-suits-500 transition-colors duration-300 caret-suits-500"
+                />
 
-              {/* Continue button */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.1, duration: 0.6 }}
-                className="mt-12"
-              >
+                {/* Continue button */}
                 <motion.button
                   onClick={handleSubmit}
                   disabled={!canContinue}
-                  className="group flex items-center gap-3 text-lg font-medium disabled:opacity-30 disabled:cursor-not-allowed transition-opacity duration-300"
-                  whileHover={canContinue ? { x: 4 } : {}}
+                  className="w-full mt-4 flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-suits-600 text-white font-medium text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-suits-700 active:scale-[0.98] transition-all duration-200"
                   whileTap={canContinue ? { scale: 0.98 } : {}}
                 >
-                  <span className="text-surface-800">Continue</span>
-                  <motion.div
-                    animate={canContinue ? { x: [0, 4, 0] } : {}}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                  >
-                    <ArrowRight className="w-5 h-5 text-suits-500" />
-                  </motion.div>
+                  <span>Continue</span>
+                  <ArrowRight className="w-4 h-4" />
                 </motion.button>
               </motion.div>
+
+              {/* Footer hint */}
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.2, duration: 0.6 }}
+                className="text-xs text-surface-500 mt-6 text-center"
+              >
+                Powered by multi-agent AI with 6 specialized models
+              </motion.p>
             </div>
           </div>
         </motion.div>

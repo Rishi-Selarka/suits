@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Camera, Check, MapPin, Briefcase, Target, User, LogOut } from 'lucide-react'
+import { Camera, Check, MapPin, Briefcase, Target, User, LogOut, ArrowLeft } from 'lucide-react'
 import { useUser } from '@/context/UserContext'
 import { cn } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
@@ -30,7 +30,7 @@ const PURPOSES = [
   { id: 'research', label: 'Legal Research' },
 ]
 
-export default function SettingsPage() {
+export default function SettingsPage({ onBack }: { onBack?: () => void }) {
   const { user, setUser, resetUser } = useUser()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -70,13 +70,23 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 h-screen overflow-y-auto bg-cream">
-      <div className="max-w-2xl mx-auto px-6 py-12">
+      <div className="max-w-2xl px-6 py-12">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: easeOutExpo }}
         >
-          <h1 className="text-2xl font-semibold text-surface-200 mb-1">Settings</h1>
+          <div className="flex items-center gap-3 mb-1">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-surface-400 hover:text-surface-200 hover:bg-cream-100 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <h1 className="text-2xl font-semibold text-surface-200">Settings</h1>
+          </div>
           <p className="text-sm text-cream-400 mb-10">Manage your profile and preferences</p>
 
           {/* ── Avatar ── */}

@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion'
-import { FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react'
+import { FileText, CheckCircle, Clock, AlertCircle, ArrowLeft } from 'lucide-react'
 import { useUser } from '@/context/UserContext'
 import { cn } from '@/lib/utils'
 import { easeOutExpo, staggerContainer, staggerItem } from '@/lib/motion'
 
-export default function DocumentsPage({ onViewDocument }: { onViewDocument?: (docId: string) => void }) {
+export default function DocumentsPage({ onViewDocument, onBack }: { onViewDocument?: (docId: string) => void; onBack?: () => void }) {
   const { documents } = useUser()
 
   return (
@@ -15,7 +15,17 @@ export default function DocumentsPage({ onViewDocument }: { onViewDocument?: (do
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: easeOutExpo }}
         >
-          <h1 className="text-xl font-semibold text-surface-200 mb-1">Documents</h1>
+          <div className="flex items-center gap-3 mb-1">
+            {onBack && (
+              <button
+                onClick={onBack}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-surface-400 hover:text-surface-200 hover:bg-cream-100 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+            <h1 className="text-xl font-semibold text-surface-200">Documents</h1>
+          </div>
           <p className="text-sm text-cream-400 mb-8">Your uploaded documents and analysis history</p>
 
           {documents.length === 0 ? (

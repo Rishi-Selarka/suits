@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   XCircle,
   ArrowUp,
+  ArrowLeft,
   MessageSquare,
   ChevronUp,
   Paperclip,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
+import { useUser } from '@/context/UserContext'
 import {
   uploadDocument,
   analyzeDocumentSSE,
@@ -68,6 +70,16 @@ interface ChatMsg {
 
 // ── Main Component ──
 
+const EXPORT_LABELS: Record<string, string> = {
+  risk_summary: 'Risk Summary',
+  deadlines: 'Deadline Tracker',
+  timebombs: 'Timebomb Clauses',
+  trap_clauses: 'Trap Clause Report',
+  negotiation_brief: 'Negotiation Brief',
+  clause_report: 'Clause Report',
+  full_bundle: 'Full Analysis Bundle',
+}
+
 export default function ToolLayout({ title, description, icon: Icon, exportType, children }: ToolLayoutProps) {
   const [phase, setPhase] = useState<ToolPhase>('empty')
   const [result, setResult] = useState<AnalysisResult | null>(null)
@@ -77,6 +89,7 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
   const [agents, setAgents] = useState<Record<string, AgentProgress>>({})
   const [currentAgent, setCurrentAgent] = useState('')
   const [downloading, setDownloading] = useState(false)
+  const { addDownload } = useUser()
 
   // Chat state
   const [chatOpen, setChatOpen] = useState(false)
@@ -131,12 +144,16 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
       const docId = uploadRes.document_id
       setDocumentId(docId)
 
-      // Check if already cached
+      // Check if already cached — but only skip analysis if results actually exist
       if (uploadRes.status === 'cached') {
-        const fullResult = await getResults(docId)
-        setResult(fullResult)
-        setPhase('done')
-        return
+        try {
+          const fullResult = await getResults(docId)
+          setResult(fullResult)
+          setPhase('done')
+          return
+        } catch {
+          // Duplicate file but not yet analyzed — fall through to analysis
+        }
       }
 
       // Start analysis
@@ -228,6 +245,14 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      addDownload({
+        id: crypto.randomUUID(),
+        documentId,
+        filename: filename || 'document',
+        exportType,
+        exportLabel: EXPORT_LABELS[exportType] || exportType,
+        downloadedAt: Date.now(),
+      })
     } catch {
       // silently fail
     } finally {
@@ -348,6 +373,14 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
       <div className="shrink-0 px-6 pt-4 pb-3 border-b border-cream-200 bg-white/50">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
+            {phase !== 'empty' && (
+              <button
+                onClick={handleReset}
+                className="w-8 h-8 rounded-xl flex items-center justify-center text-surface-400 hover:text-surface-200 hover:bg-cream-100 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
             <div className="w-9 h-9 rounded-xl bg-suits-500/10 flex items-center justify-center">
               <Icon className="w-[18px] h-[18px] text-suits-600" />
             </div>

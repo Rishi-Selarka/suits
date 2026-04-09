@@ -4,7 +4,7 @@ import ToolLayout from './ToolLayout'
 import { cn } from '@/lib/utils'
 import type { AnalysisResult } from '@/api/client'
 
-function RiskScoreContent({ result }: { result: AnalysisResult }) {
+export function RiskScoreContent({ result }: { result: AnalysisResult }) {
   const advisory = result.advisory
   const risk = advisory?.overall_risk_assessment
   const risks = result.risks || []
@@ -132,7 +132,7 @@ function RiskScoreContent({ result }: { result: AnalysisResult }) {
 
 export default function RiskScorePage() {
   return (
-    <ToolLayout title="Risk Score" description="Overall risk assessment and clause-level breakdown" icon={Shield}>
+    <ToolLayout title="Risk Score" description="Overall risk assessment and clause-level breakdown" icon={Shield} exportType="risk_summary">
       {(result) => <RiskScoreContent result={result} />}
     </ToolLayout>
   )
