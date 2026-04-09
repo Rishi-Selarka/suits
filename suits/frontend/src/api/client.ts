@@ -170,11 +170,13 @@ export async function analyzeDocumentSSE(
   onEvent: (event: SSEEvent) => void,
   onComplete?: () => void,
   onError?: (error: string) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/analyze/${documentId}`, {
       method: 'POST',
       headers: { 'Accept': 'text/event-stream' },
+      signal,
     })
 
     if (!response.ok) {
@@ -248,12 +250,14 @@ export async function generalChatStream(
   onDone: (sources: ChatResponse['source_clauses']) => void,
   onError?: (error: string) => void,
   conversationId?: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({ message, conversation_id: conversationId || null }),
+      signal,
     })
     if (!response.ok) {
       const err = await response.json().catch(() => ({ detail: 'Chat failed' }))
@@ -273,12 +277,14 @@ export async function chatWithDocumentStream(
   onDone: (sources: ChatResponse['source_clauses']) => void,
   onError?: (error: string) => void,
   conversationId?: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/chat/${documentId}/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({ message, conversation_id: conversationId || null }),
+      signal,
     })
     if (!response.ok) {
       const err = await response.json().catch(() => ({ detail: 'Chat failed' }))
@@ -382,6 +388,7 @@ export async function negotiateStream(
   rounds: number,
   onEvent: (event: NegotiateEvent) => void,
   onError?: (error: string) => void,
+  signal?: AbortSignal,
 ): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/negotiate/stream`, {
@@ -392,6 +399,7 @@ export async function negotiateStream(
         document_id: documentId || null,
         rounds,
       }),
+      signal,
     })
 
     if (!response.ok) {

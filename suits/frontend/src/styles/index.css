@@ -80,6 +80,11 @@
 }
 
 /* ── Scrollbar ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,0.15) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -144,15 +149,15 @@
   }
 }
 
-/* ── Splash image fade — multi-directional dissolve into dark surface ── */
+/* ── Splash image fade — dissolve into cream ── */
 .splash-mask {
   background: linear-gradient(
     to right,
     transparent 0%,
     transparent 50%,
-    rgba(9, 9, 11, 0.4) 70%,
-    rgba(9, 9, 11, 0.85) 85%,
-    rgb(9, 9, 11) 100%
+    rgba(250, 249, 234, 0.4) 70%,
+    rgba(250, 249, 234, 0.85) 85%,
+    rgb(250, 249, 234) 100%
   );
 }
 
@@ -176,7 +181,3 @@
   animation: blink-cursor 0.8s step-end infinite;
 }
 
-/* ── Video overlay ── */
-.video-vignette {
-  background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.6) 100%);
-}

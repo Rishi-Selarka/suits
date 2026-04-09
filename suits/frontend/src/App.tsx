@@ -1,9 +1,44 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Component, type ErrorInfo, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { UserProvider, useUser } from '@/context/UserContext'
 import Welcome from '@/pages/Welcome'
 import Home from '@/pages/Home'
 import { easeOutExpo } from '@/lib/motion'
+
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('ErrorBoundary caught an error:', error, info)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-cream gap-4">
+          <p className="text-lg font-semibold text-surface-200">Something went wrong</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-5 py-2.5 rounded-xl text-sm font-medium bg-suits-600 text-white hover:bg-suits-500 transition-colors"
+          >
+            Reload
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 function AppRouter() {
   const { user } = useUser()
@@ -46,8 +81,10 @@ function AppRouter() {
 
 export default function App() {
   return (
-    <UserProvider>
-      <AppRouter />
-    </UserProvider>
+    <ErrorBoundary>
+      <UserProvider>
+        <AppRouter />
+      </UserProvider>
+    </ErrorBoundary>
   )
 }

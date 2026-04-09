@@ -1,13 +1,6 @@
 import { useState, useCallback } from 'react'
 import { type ChatResponse, chatWithDocument } from '@/api/client'
-
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  sources?: ChatResponse['source_clauses']
-  timestamp: number
-}
+import { type ChatMessage } from '@/context/UserContext'
 
 export function useChat(documentId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])

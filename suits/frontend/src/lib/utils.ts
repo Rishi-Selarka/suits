@@ -30,3 +30,19 @@ export function riskLabel(score: number): string {
   if (score <= 8) return 'High'
   return 'Critical'
 }
+
+const ALLOWED_UPLOAD_TYPES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'text/plain',
+])
+
+const ALLOWED_UPLOAD_EXTENSIONS = /\.(pdf|png|jpe?g|txt)$/i
+
+export function validateUploadFile(file: File): string | null {
+  if (!ALLOWED_UPLOAD_TYPES.has(file.type) && !ALLOWED_UPLOAD_EXTENSIONS.test(file.name)) {
+    return 'Unsupported file type. Allowed: PDF, PNG, JPG, TXT.'
+  }
+  return null
+}
