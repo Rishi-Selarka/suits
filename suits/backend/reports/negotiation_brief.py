@@ -68,9 +68,25 @@ _TIMEBOMB_KEYWORDS = [
 
 
 def _safe(text: str, max_len: int = 0) -> str:
-    """Sanitise text for fpdf2 (replace unsupported chars, optionally truncate)."""
+    """Sanitise text for fpdf2 (replace unsupported chars, optionally truncate).
+
+    Uses transliteration for common non-Latin-1 chars (smart quotes, rupee sign,
+    em-dashes, etc.) and falls back to '?' only for truly unmappable characters.
+    """
     # Strip control characters that break fpdf2 layout
     cleaned = text.replace("\r", "").replace("\t", "    ")
+    # Transliterate common Unicode chars to Latin-1 equivalents
+    _replacements = {
+        "\u2018": "'", "\u2019": "'",   # smart single quotes
+        "\u201c": '"', "\u201d": '"',   # smart double quotes
+        "\u2013": "-", "\u2014": "--",  # en-dash, em-dash
+        "\u2026": "...",                 # ellipsis
+        "\u20b9": "INR ",               # rupee sign
+        "\u2022": "*",                  # bullet
+        "\u00a0": " ",                  # non-breaking space
+    }
+    for orig, repl in _replacements.items():
+        cleaned = cleaned.replace(orig, repl)
     cleaned = cleaned.encode("latin-1", errors="replace").decode("latin-1")
     if max_len and len(cleaned) > max_len:
         return cleaned[: max_len - 3] + "..."

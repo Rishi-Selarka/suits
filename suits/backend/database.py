@@ -96,7 +96,8 @@ class Database:
 
     @property
     def db(self) -> aiosqlite.Connection:
-        assert self._db is not None, "Database not connected — call connect() first"
+        if self._db is None:
+            raise RuntimeError("Database not connected — call connect() first")
         return self._db
 
     # ── Users ───────────────────────────────────────────────────────────

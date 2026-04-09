@@ -99,7 +99,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         except Exception:
             logger.warning("EmbeddingManager not available — RAG chat disabled", extra={"status": "rag_skip"})
 
-    asyncio.create_task(_load_rag())
+    _rag_task = asyncio.create_task(_load_rag())
+
+    def _on_rag_done(t: asyncio.Task[None]) -> None:
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc is not None:
+            logger.error(f"RAG background task failed: {exc}", extra={"status": "error"})
+
+    _rag_task.add_done_callback(_on_rag_done)
 
     yield
 
@@ -180,23 +189,29 @@ async def upload_document(request: Request, file: UploadFile = File(...)) -> Upl
             detail=f"Unsupported file type: {file.content_type}. Allowed: PDF, PNG, JPG, JPEG, TXT.",
         )
 
-    # Read file bytes
-    data = await file.read()
-
-    # Validate file size
+    # Read file bytes in chunks with streaming size enforcement
     max_bytes = settings.max_file_size_mb * 1024 * 1024
-    if len(data) > max_bytes:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large ({len(data) / (1024 * 1024):.1f} MB). Maximum: {settings.max_file_size_mb} MB.",
-        )
+    chunks: list[bytes] = []
+    total_size = 0
+    while True:
+        chunk = await file.read(1024 * 256)  # 256 KB chunks
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > max_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File too large (>{settings.max_file_size_mb} MB). Maximum: {settings.max_file_size_mb} MB.",
+            )
+        chunks.append(chunk)
+    data = b"".join(chunks)
 
     if not data:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
     # SHA-256 dedup
     file_hash = hashlib.sha256(data).hexdigest()
-    existing = storage.find_by_hash(file_hash)
+    existing = await asyncio.to_thread(storage.find_by_hash, file_hash)
     if existing:
         logger.info(
             f"Duplicate upload detected: {existing.document_id}",
@@ -211,9 +226,10 @@ async def upload_document(request: Request, file: UploadFile = File(...)) -> Upl
 
     # New document
     document_id = uuid.uuid4().hex
-    safe_filename = (file.filename or "document").replace("/", "_").replace("\\", "_")
+    import re as _re
+    safe_filename = _re.sub(r'[^a-zA-Z0-9._-]', '_', file.filename or "document")[:255]
 
-    storage.save_upload(document_id, safe_filename, data)
+    await asyncio.to_thread(storage.save_upload, document_id, safe_filename, data)
 
     meta = DocumentMetadata(
         document_id=document_id,
@@ -223,7 +239,7 @@ async def upload_document(request: Request, file: UploadFile = File(...)) -> Upl
         content_type=content_type,
         status="uploaded",
     )
-    storage.save_metadata(meta)
+    await asyncio.to_thread(storage.save_metadata, meta)
 
     logger.info(
         f"Document uploaded: {document_id}",
