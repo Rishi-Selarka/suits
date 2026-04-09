@@ -602,14 +602,34 @@ async def general_chat_stream(body: ChatRequest, request: Request) -> EventSourc
 
     chat_config = settings.agent_models.general_chat
 
+    # Conversation memory for multi-turn context
+    memory = getattr(request.app.state, "conversation_memory", None)
+    memory_key = body.conversation_id or "general"
+    conversation_history: list[dict] = []
+    if memory is not None:
+        conversation_history = memory.get_history(memory_key)
+
+    # Build full message list with history
+    messages: list[dict[str, str]] = [{"role": "system", "content": GENERAL_LEGAL_ADVISOR_PROMPT}]
+    for turn in conversation_history:
+        messages.append({"role": turn["role"], "content": turn["content"]})
+    messages.append({"role": "user", "content": body.message})
+
     async def event_generator() -> AsyncGenerator[str, None]:
+        collected = ""
         try:
-            async for token in llm_client.call_stream(
+            async for token in llm_client.call_stream_messages(
                 config=chat_config,
-                system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
-                user_message=body.message,
+                messages=messages,
             ):
+                collected += token
                 yield json.dumps({"type": "token", "content": token})
+
+            # Persist to memory after successful response
+            if memory is not None:
+                memory.add_message(memory_key, "user", body.message)
+                memory.add_message(memory_key, "assistant", collected)
+
             yield json.dumps({"type": "done", "source_clauses": []})
         except Exception as exc:
             logger.error(f"Stream chat failed: {exc}", extra={"status": "chat_error"})
@@ -770,7 +790,15 @@ async def document_chat_stream(
     result = storage.get_result(document_id)
     chat_config = settings.agent_models.rag_chat
 
+    # Conversation memory for multi-turn context
+    memory = getattr(request.app.state, "conversation_memory", None)
+    memory_key = body.conversation_id or document_id
+    conversation_history: list[dict] = []
+    if memory is not None:
+        conversation_history = memory.get_history(memory_key)
+
     async def event_generator() -> AsyncGenerator[str, None]:
+        collected = ""
         try:
             if result:
                 # Build context from stored clauses
@@ -783,29 +811,52 @@ async def document_chat_stream(
                     for c in clauses_raw[:15]
                 ]
                 context_text = "\n\n".join(clause_texts)
-                augmented_message = (
-                    f"Document clauses:\n{context_text}\n\n"
-                    f"User question: {body.message}"
-                )
 
                 from prompts.templates import RAG_CHAT_SYSTEM_PROMPT
 
-                async for token in llm_client.call_stream(
+                system_content = (
+                    f"{RAG_CHAT_SYSTEM_PROMPT}\n\n"
+                    f"Document clauses for reference:\n{context_text}"
+                )
+
+                # Build full message list with history
+                messages: list[dict[str, str]] = [{"role": "system", "content": system_content}]
+                for turn in conversation_history:
+                    messages.append({"role": turn["role"], "content": turn["content"]})
+                messages.append({"role": "user", "content": body.message})
+
+                async for token in llm_client.call_stream_messages(
                     config=chat_config,
-                    system_prompt=RAG_CHAT_SYSTEM_PROMPT,
-                    user_message=augmented_message,
+                    messages=messages,
                 ):
+                    collected += token
                     yield json.dumps({"type": "token", "content": token})
+
+                # Persist to memory after successful response
+                if memory is not None:
+                    memory.add_message(memory_key, "user", body.message)
+                    memory.add_message(memory_key, "assistant", collected)
+
                 yield json.dumps({"type": "done", "source_clauses": []})
             else:
                 from prompts.templates import GENERAL_LEGAL_ADVISOR_PROMPT
 
-                async for token in llm_client.call_stream(
+                messages_fallback: list[dict[str, str]] = [{"role": "system", "content": GENERAL_LEGAL_ADVISOR_PROMPT}]
+                for turn in conversation_history:
+                    messages_fallback.append({"role": turn["role"], "content": turn["content"]})
+                messages_fallback.append({"role": "user", "content": body.message})
+
+                async for token in llm_client.call_stream_messages(
                     config=chat_config,
-                    system_prompt=GENERAL_LEGAL_ADVISOR_PROMPT,
-                    user_message=body.message,
+                    messages=messages_fallback,
                 ):
+                    collected += token
                     yield json.dumps({"type": "token", "content": token})
+
+                if memory is not None:
+                    memory.add_message(memory_key, "user", body.message)
+                    memory.add_message(memory_key, "assistant", collected)
+
                 yield json.dumps({"type": "done", "source_clauses": []})
         except Exception as exc:
             logger.error(f"Stream doc chat failed: {exc}", extra={"status": "chat_error"})

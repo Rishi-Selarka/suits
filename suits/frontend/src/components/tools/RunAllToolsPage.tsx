@@ -464,18 +464,14 @@ export default function RunAllToolsPage({ preloadResult, preloadDocumentId, prel
                 </p>
               </div>
 
-              {/* Tool icons row */}
-              <div className="mt-6 flex items-center gap-3 justify-center">
-                {TABS.map(tab => (
-                  <div key={tab.id} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-cream-200">
-                    <tab.icon className="w-3.5 h-3.5 text-suits-500" />
-                    <span className="text-[10px] font-medium text-surface-400">{tab.label}</span>
-                  </div>
-                ))}
-              </div>
               <p className="text-center text-xs text-cream-400 mt-4">
                 All 5 analysis tools will run simultaneously on your document.
               </p>
+              <div className="mt-3 flex items-center justify-center gap-2 text-cream-400">
+                {TABS.map(tab => (
+                  <tab.icon key={tab.id} className="w-3.5 h-3.5" />
+                ))}
+              </div>
             </motion.div>
           </div>
         )}

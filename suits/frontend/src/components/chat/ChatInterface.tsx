@@ -245,9 +245,9 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
 
       try {
         if (documentId) {
-          await chatWithDocumentStream(documentId, content, onToken, onDone, onError)
+          await chatWithDocumentStream(documentId, content, onToken, onDone, onError, chatId)
         } else {
-          await generalChatStream(content, onToken, onDone, onError)
+          await generalChatStream(content, onToken, onDone, onError, chatId)
         }
       } catch {
         onError('Something went wrong. Please try again.')

@@ -247,12 +247,13 @@ export async function generalChatStream(
   onToken: (token: string) => void,
   onDone: (sources: ChatResponse['source_clauses']) => void,
   onError?: (error: string) => void,
+  conversationId?: string,
 ): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, conversation_id: conversationId || null }),
     })
     if (!response.ok) {
       const err = await response.json().catch(() => ({ detail: 'Chat failed' }))
@@ -271,12 +272,13 @@ export async function chatWithDocumentStream(
   onToken: (token: string) => void,
   onDone: (sources: ChatResponse['source_clauses']) => void,
   onError?: (error: string) => void,
+  conversationId?: string,
 ): Promise<void> {
   try {
     const response = await fetch(`${API_BASE}/chat/${documentId}/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, conversation_id: conversationId || null }),
     })
     if (!response.ok) {
       const err = await response.json().catch(() => ({ detail: 'Chat failed' }))
