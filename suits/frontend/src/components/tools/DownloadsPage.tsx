@@ -7,11 +7,12 @@ import { easeOutExpo, staggerContainer, staggerItem } from '@/lib/motion'
 
 export default function DownloadsPage({ onBack }: { onBack?: () => void }) {
   const { downloads } = useUser()
+  const [opening, setOpening] = useState<string | null>(null)
   const [redownloading, setRedownloading] = useState<string | null>(null)
 
   const handleOpen = async (dl: typeof downloads[0]) => {
-    if (redownloading) return
-    setRedownloading(dl.id)
+    if (opening) return
+    setOpening(dl.id)
     try {
       const blob = await downloadReport(dl.documentId, dl.exportType)
       const url = URL.createObjectURL(blob)
@@ -25,7 +26,7 @@ export default function DownloadsPage({ onBack }: { onBack?: () => void }) {
     } catch {
       // silently fail
     } finally {
-      setRedownloading(null)
+      setOpening(null)
     }
   }
 

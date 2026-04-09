@@ -364,8 +364,10 @@ export default function NegotiatorPage() {
     const a = document.createElement('a')
     a.href = url
     a.download = `negotiation-${topic.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}.txt`
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
     addDownload({
       id: crypto.randomUUID(),
       documentId: documentId || 'negotiation',

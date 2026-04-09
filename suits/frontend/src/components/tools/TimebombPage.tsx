@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Timer } from 'lucide-react'
 import ToolLayout from './ToolLayout'
@@ -51,7 +52,7 @@ export function findTimebombs(result: AnalysisResult): TimebombClause[] {
 }
 
 export function TimebombContent({ result }: { result: AnalysisResult }) {
-  const timebombs = findTimebombs(result)
+  const timebombs = useMemo(() => findTimebombs(result), [result])
 
   return timebombs.length === 0 ? (
     <p className="text-center text-cream-400 py-12">No timebomb clauses detected in this document.</p>

@@ -17,6 +17,7 @@ import {
   type ChatResponse,
 } from '@/api/client'
 import { easeOutExpo, staggerContainer, staggerItem } from '@/lib/motion'
+import { validateUploadFile } from '@/lib/utils'
 
 interface Message {
   id: string
@@ -105,6 +106,12 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
   const chatSavedRef = useRef(
     chatHistory.some(c => c.id === chatId),
   )
+  // Keep chatSavedRef in sync with chatHistory so it never goes stale
+  useEffect(() => {
+    if (!chatSavedRef.current && chatHistory.some(c => c.id === chatId)) {
+      chatSavedRef.current = true
+    }
+  }, [chatHistory, chatId])
   const [isThinking, setIsThinking] = useState(false)
   const [streamingId, setStreamingId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -261,6 +268,8 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const err = validateUploadFile(file)
+    if (err) { e.target.value = ''; return }
     onFileSelect?.(file)
     e.target.value = ''
   }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Sidebar from './Sidebar'
 import ChatInterface from '@/components/chat/ChatInterface'
@@ -20,7 +20,7 @@ import { useUser } from '@/context/UserContext'
 import { uploadDocument, getResults, type AnalysisResult } from '@/api/client'
 import { easeOutExpo } from '@/lib/motion'
 
-type AppView = 'chat' | 'uploading' | 'pipeline' | 'results' | string
+type AppView = 'chat' | 'uploading' | 'pipeline' | 'results' | 'settings' | 'run-all-tools' | 'risk-score' | 'simulator' | 'deadlines' | 'timebomb' | 'trap-detector' | 'negotiator' | 'documents' | 'library' | 'downloads'
 
 // Tool views that should stay mounted once visited (to preserve state)
 const PERSISTENT_TOOL_VIEWS = ['run-all-tools', 'risk-score', 'simulator', 'deadlines', 'timebomb', 'trap-detector', 'negotiator'] as const
@@ -37,6 +37,7 @@ export default function AppLayout() {
 
   const analysis = useAnalysis()
   const { addDocument } = useUser()
+  const analysisCompletedRef = useRef<string | null>(null)
 
   // ── Upload → Analyze → Results flow ──
 
@@ -87,9 +88,14 @@ export default function AppLayout() {
       (analysis.pipelineStatus === 'complete' || analysis.pipelineStatus === 'cached') &&
       analysis.result
     ) {
+      // Guard against duplicate calls when addDocument identity changes
+      const docId = analysis.result.document_id
+      if (analysisCompletedRef.current === docId) return
+      analysisCompletedRef.current = docId
+
       setCachedResult(analysis.result)
       addDocument({
-        id: analysis.result.document_id,
+        id: docId,
         filename: activeFilename,
         uploadedAt: Date.now(),
         analyzed: true,
@@ -106,6 +112,7 @@ export default function AppLayout() {
     analysis.reset()
     setActiveView('chat')
     setUploadError(null)
+    analysisCompletedRef.current = null
   }, [analysis])
 
   const handleChatSelect = useCallback((chatId: string, documentId?: string) => {
@@ -119,7 +126,7 @@ export default function AppLayout() {
   }, [])
 
   const handleViewChange = useCallback((view: string) => {
-    setActiveView(view)
+    setActiveView(view as AppView)
     if (PERSISTENT_TOOL_VIEWS.includes(view as typeof PERSISTENT_TOOL_VIEWS[number])) {
       setMountedViews(prev => {
         if (prev.has(view)) return prev
