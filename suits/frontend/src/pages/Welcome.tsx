@@ -39,7 +39,7 @@ export default function Welcome({ onComplete }: WelcomeProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-surface">
+    <div className="fixed inset-0 bg-cream">
       <AnimatePresence mode="wait">
         {phase === 'splash' && (
           <SplashScreen key="splash" onContinue={handleNameSubmit} />
