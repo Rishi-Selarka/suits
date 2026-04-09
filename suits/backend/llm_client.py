@@ -21,6 +21,9 @@ logger = get_logger("llm_client")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
+LLM_CALL_TIMEOUT = 120  # seconds per LLM call
+
+
 class LLMClient:
     """Unified async LLM client — all calls routed through OpenRouter."""
 
@@ -51,14 +54,17 @@ class LLMClient:
         model_id = override_model_id or config.model_id
         start = time.perf_counter()
 
-        response = await self.client.chat.completions.create(
-            model=model_id,
-            max_tokens=config.max_tokens,
-            temperature=config.temperature,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message},
-            ],
+        response = await asyncio.wait_for(
+            self.client.chat.completions.create(
+                model=model_id,
+                max_tokens=config.max_tokens,
+                temperature=config.temperature,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+            ),
+            timeout=LLM_CALL_TIMEOUT,
         )
 
         choice = response.choices[0] if response.choices else None
@@ -103,6 +109,8 @@ class LLMClient:
             except (
                 openai.RateLimitError,
                 openai.InternalServerError,
+                openai.APIConnectionError,
+                asyncio.TimeoutError,
             ) as exc:
                 last_exc = exc
                 delay = self.settings.retry_base_delay * (2 ** attempt)
@@ -196,3 +204,4 @@ class LLMClient:
     async def close(self) -> None:
         if self._client:
             await self._client.close()
+            self._client = None

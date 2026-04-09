@@ -14,6 +14,7 @@ from config import Settings
 from llm_client import LLMClient
 from logging_config import get_logger
 from models import ChatResponse
+from prompts.templates import RAG_CHAT_SYSTEM_PROMPT
 from rag.embeddings import EmbeddingManager
 
 logger = get_logger("rag.retriever")
@@ -25,16 +26,6 @@ _RERANK_SYSTEM_PROMPT = (
     "Return a JSON array of clause_ids in order of relevance."
 )
 
-RAG_CHAT_SYSTEM_PROMPT = (
-    "You are a legal document Q&A assistant. Answer the user's question based ONLY "
-    "on the provided document clauses.\n\n"
-    "Rules:\n"
-    '- Always cite which clause(s) your answer comes from: "According to Clause 5 (Termination)..."\n'
-    "- If the answer isn't in the document, say \"This document doesn't address that topic.\"\n"
-    "- Use simple language, not legalese\n"
-    "- If the question is about rights, also mention any relevant obligations\n"
-    '- If there\'s ambiguity in the clause, flag it: "This clause is ambiguous and could be interpreted as..."'
-)
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

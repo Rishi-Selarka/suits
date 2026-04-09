@@ -1,7 +1,6 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.24.0
 python-multipart>=0.0.6
-anthropic>=0.40.0
 openai>=1.50.0
 PyMuPDF>=1.23.0
 pytesseract>=0.3.10
@@ -13,3 +12,4 @@ pydantic>=2.5.0
 pydantic-settings>=2.1.0
 python-dotenv>=1.0.0
 sse-starlette>=1.8.0
+aiosqlite>=0.19.0

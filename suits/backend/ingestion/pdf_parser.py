@@ -121,38 +121,39 @@ def _extract_with_pymupdf(file_path: str) -> tuple[str, int, int]:
         (full_text, page_count, total_tables_found)
     """
     doc = fitz.open(file_path)
-    page_count = len(doc)
-    pages_text: list[str] = []
-    total_tables = 0
+    try:
+        page_count = len(doc)
+        pages_text: list[str] = []
+        total_tables = 0
 
-    for page_num in range(page_count):
-        page = doc[page_num]
-        parts: list[str] = []
+        for page_num in range(page_count):
+            page = doc[page_num]
+            parts: list[str] = []
 
-        # --- Plain text extraction ---
-        page_text = page.get_text("text")
-        if page_text and page_text.strip():
-            parts.append(page_text.strip())
+            # --- Plain text extraction ---
+            page_text = page.get_text("text")
+            if page_text and page_text.strip():
+                parts.append(page_text.strip())
 
-        # --- Table extraction ---
-        try:
-            tables = page.find_tables()
-            if tables and tables.tables:
-                for table in tables.tables:
-                    md = _table_to_markdown(table)
-                    if md:
-                        total_tables += 1
-                        parts.append(f"\n[Table on page {page_num + 1}]\n{md}\n")
-        except Exception as exc:
-            logger.debug(
-                f"Table extraction failed on page {page_num + 1}: {exc}",
-                extra={"status": "table_extract_warn"},
-            )
+            # --- Table extraction ---
+            try:
+                tables = page.find_tables()
+                if tables and tables.tables:
+                    for table in tables.tables:
+                        md = _table_to_markdown(table)
+                        if md:
+                            total_tables += 1
+                            parts.append(f"\n[Table on page {page_num + 1}]\n{md}\n")
+            except Exception as exc:
+                logger.debug(
+                    f"Table extraction failed on page {page_num + 1}: {exc}",
+                    extra={"status": "table_extract_warn"},
+                )
 
-        if parts:
-            pages_text.append("\n\n".join(parts))
-
-    doc.close()
+            if parts:
+                pages_text.append("\n\n".join(parts))
+    finally:
+        doc.close()
 
     logger.info(
         f"PyMuPDF extracted text from {len(pages_text)}/{page_count} pages, "
@@ -169,19 +170,20 @@ def _extract_with_ocr(file_path: str) -> str:
     on every page.
     """
     doc = fitz.open(file_path)
-    total_pages = len(doc)
-    pages_text: list[str] = []
+    try:
+        total_pages = len(doc)
+        pages_text: list[str] = []
 
-    for page_num in range(total_pages):
-        page = doc[page_num]
-        # Render at 300 DPI for good OCR quality
-        mat = fitz.Matrix(300 / 72, 300 / 72)
-        pix = page.get_pixmap(matrix=mat)
-        img_bytes = pix.tobytes("png")
-        image = Image.open(io.BytesIO(img_bytes))
+        for page_num in range(total_pages):
+            page = doc[page_num]
+            # Render at 300 DPI for good OCR quality
+            mat = fitz.Matrix(300 / 72, 300 / 72)
+            pix = page.get_pixmap(matrix=mat)
+            img_bytes = pix.tobytes("png")
+            image = Image.open(io.BytesIO(img_bytes))
 
-        try:
-            page_text = pytesseract.image_to_string(image)
+            try:
+                page_text = pytesseract.image_to_string(image)
             if page_text:
                 pages_text.append(page_text)
         except Exception as exc:
@@ -190,7 +192,8 @@ def _extract_with_ocr(file_path: str) -> str:
                 extra={"status": "ocr_page_error"},
             )
 
-    doc.close()
+    finally:
+        doc.close()
     logger.info(
         f"OCR extracted text from {len(pages_text)}/{total_pages} pages",
         extra={"status": "ocr_done"},

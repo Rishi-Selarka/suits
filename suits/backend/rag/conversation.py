@@ -14,6 +14,9 @@ logger = get_logger("rag.conversation")
 class ConversationMemory:
     """In-memory, per-document conversation history."""
 
+    MAX_DOCUMENTS = 100  # max conversations kept in memory
+    MAX_MESSAGES_PER_DOC = 50  # max messages stored per document
+
     def __init__(self) -> None:
         self._histories: dict[str, list[dict]] = {}
 
@@ -37,9 +40,17 @@ class ConversationMemory:
             return
 
         if document_id not in self._histories:
+            # Evict oldest conversation if at capacity
+            if len(self._histories) >= self.MAX_DOCUMENTS:
+                oldest_key = next(iter(self._histories))
+                del self._histories[oldest_key]
             self._histories[document_id] = []
 
         self._histories[document_id].append({"role": role, "content": content})
+
+        # Trim per-document history if over limit
+        if len(self._histories[document_id]) > self.MAX_MESSAGES_PER_DOC:
+            self._histories[document_id] = self._histories[document_id][-self.MAX_MESSAGES_PER_DOC:]
 
         logger.debug(
             "Message added to conversation",
