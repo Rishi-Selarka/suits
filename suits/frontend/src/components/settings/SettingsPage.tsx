@@ -82,7 +82,7 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
 
   return (
     <div className="flex-1 h-screen overflow-y-auto bg-cream">
-      <div className="max-w-2xl px-6 py-12">
+      <div className="max-w-2xl mx-auto px-6 py-12">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
