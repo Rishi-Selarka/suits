@@ -77,6 +77,23 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
+    # ── Supabase (optional — when unset, auth is skipped and the app uses
+    #    the local file-based storage + SQLite path exactly as before) ──
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+    supabase_jwt_secret: str = ""
+    supabase_storage_bucket: str = "documents"
+
+    @property
+    def auth_enabled(self) -> bool:
+        """True when Supabase JWT verification should run on protected endpoints."""
+        return bool(self.supabase_jwt_secret)
+
+    @property
+    def supabase_configured(self) -> bool:
+        """True when both URL and service-role key are set (backend can call Supabase)."""
+        return bool(self.supabase_url and self.supabase_service_role_key)
+
     @model_validator(mode="after")
     def _check_api_key(self) -> "Settings":
         if not self.openrouter_api_key:
