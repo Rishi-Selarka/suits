@@ -11,6 +11,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
     "@tailwindcss/vite": "^4.2.2",
     "axios": "^1.14.0",
     "clsx": "^2.1.1",
