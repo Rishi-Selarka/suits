@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getAccessToken } from '@/lib/supabase'
 
 const API_BASE = '/api'
 
@@ -6,6 +7,29 @@ export const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
 })
+
+// Attach Supabase JWT to every axios request when available.
+api.interceptors.request.use(async (config) => {
+  const token = await getAccessToken()
+  if (token) {
+    config.headers = config.headers ?? {}
+    ;(config.headers as Record<string, string>).Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
+/**
+ * Drop-in replacement for `fetch` that attaches the Supabase JWT.
+ * Used by the SSE / streaming endpoints below (axios can't stream responses).
+ */
+async function authedFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const token = await getAccessToken()
+  const headers = new Headers(init.headers)
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+  return fetch(input, { ...init, headers })
+}
 
 // ── Types matching backend models (models.py) ──
 
@@ -173,7 +197,7 @@ export async function analyzeDocumentSSE(
   signal?: AbortSignal,
 ): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE}/analyze/${documentId}`, {
+    const response = await authedFetch(`${API_BASE}/analyze/${documentId}`, {
       method: 'POST',
       headers: { 'Accept': 'text/event-stream' },
       signal,
@@ -253,7 +277,7 @@ export async function generalChatStream(
   signal?: AbortSignal,
 ): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE}/chat/stream`, {
+    const response = await authedFetch(`${API_BASE}/chat/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({ message, conversation_id: conversationId || null }),
@@ -280,7 +304,7 @@ export async function chatWithDocumentStream(
   signal?: AbortSignal,
 ): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE}/chat/${documentId}/stream`, {
+    const response = await authedFetch(`${API_BASE}/chat/${documentId}/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({ message, conversation_id: conversationId || null }),
@@ -391,7 +415,7 @@ export async function negotiateStream(
   signal?: AbortSignal,
 ): Promise<void> {
   try {
-    const response = await fetch(`${API_BASE}/negotiate/stream`, {
+    const response = await authedFetch(`${API_BASE}/negotiate/stream`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
       body: JSON.stringify({

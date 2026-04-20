@@ -1,8 +1,10 @@
 import { useState, useEffect, Component, type ErrorInfo, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { UserProvider, useUser } from '@/context/UserContext'
 import Welcome from '@/pages/Welcome'
 import Home from '@/pages/Home'
+import Login from '@/pages/Login'
 import { easeOutExpo } from '@/lib/motion'
 
 class ErrorBoundary extends Component<
@@ -79,12 +81,40 @@ function AppRouter() {
   )
 }
 
+/**
+ * Gate the whole app on Supabase authentication.
+ * - If Supabase isn't configured (dev mode): skip auth, render app as before.
+ * - If configured and user is signed in: render app.
+ * - Otherwise: render the Login screen.
+ */
+function AuthGate({ children }: { children: ReactNode }) {
+  const { user, loading, enabled } = useAuth()
+
+  if (!enabled) return <>{children}</>
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-surface flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-surface-400 border-t-suits-500 animate-spin" />
+      </div>
+    )
+  }
+
+  if (!user) return <Login />
+
+  return <>{children}</>
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
-      <UserProvider>
-        <AppRouter />
-      </UserProvider>
+      <AuthProvider>
+        <AuthGate>
+          <UserProvider>
+            <AppRouter />
+          </UserProvider>
+        </AuthGate>
+      </AuthProvider>
     </ErrorBoundary>
   )
 }
