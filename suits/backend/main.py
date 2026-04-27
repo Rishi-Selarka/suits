@@ -10,11 +10,12 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, File, HTTPException, Query, Request, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sse_starlette.sse import EventSourceResponse
 
+from auth import get_current_user_id
 from config import get_settings
 from database import Database
 from logging_config import get_logger, setup_logging
@@ -176,10 +177,19 @@ def _resolve_content_type(upload: UploadFile) -> str:
 # ── POST /api/upload ─────────────────────────────────────────────────────────
 
 @app.post("/api/upload", response_model=UploadResponse)
-async def upload_document(request: Request, file: UploadFile = File(...)) -> UploadResponse:
+async def upload_document(
+    request: Request,
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user_id),
+) -> UploadResponse:
     """Accept a document upload, deduplicate by SHA-256, and store."""
     storage = _storage(request)
     settings = _settings(request)
+    db = _db(request)
+
+    # Make sure the profile row exists (Supabase trigger usually handles this,
+    # but the dev backend won't have anything until first touch).
+    await db.get_or_create_profile(user_id)
 
     # Validate content type
     content_type = _resolve_content_type(file)
@@ -209,13 +219,13 @@ async def upload_document(request: Request, file: UploadFile = File(...)) -> Upl
     if not data:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-    # SHA-256 dedup
+    # SHA-256 dedup (per-user)
     file_hash = hashlib.sha256(data).hexdigest()
-    existing = await asyncio.to_thread(storage.find_by_hash, file_hash)
+    existing = await storage.find_by_hash(user_id, file_hash)
     if existing:
         logger.info(
             f"Duplicate upload detected: {existing.document_id}",
-            extra={"status": "cached"},
+            extra={"status": "cached", "user_id": user_id},
         )
         return UploadResponse(
             document_id=existing.document_id,
@@ -229,7 +239,7 @@ async def upload_document(request: Request, file: UploadFile = File(...)) -> Upl
     import re as _re
     safe_filename = _re.sub(r'[^a-zA-Z0-9._-]', '_', file.filename or "document")[:255]
 
-    await asyncio.to_thread(storage.save_upload, document_id, safe_filename, data)
+    storage_path = await storage.save_upload(user_id, document_id, safe_filename, data)
 
     meta = DocumentMetadata(
         document_id=document_id,
@@ -238,12 +248,13 @@ async def upload_document(request: Request, file: UploadFile = File(...)) -> Upl
         file_size_bytes=len(data),
         content_type=content_type,
         status="uploaded",
+        storage_path=storage_path,
     )
-    await asyncio.to_thread(storage.save_metadata, meta)
+    await storage.save_metadata(user_id, meta)
 
     logger.info(
         f"Document uploaded: {document_id}",
-        extra={"status": "uploaded"},
+        extra={"status": "uploaded", "user_id": user_id},
     )
 
     return UploadResponse(
@@ -260,7 +271,7 @@ async def upload_document(request: Request, file: UploadFile = File(...)) -> Upl
 async def analyze_document(
     document_id: str,
     request: Request,
-    user_id: str = Query(default=""),
+    user_id: str = Depends(get_current_user_id),
 ) -> EventSourceResponse:
     """Run the full analysis pipeline and stream progress via SSE."""
     storage = _storage(request)
@@ -268,23 +279,24 @@ async def analyze_document(
     settings = _settings(request)
     db = _db(request)
 
-    meta = storage.get_metadata(document_id)
+    meta = await storage.get_metadata(user_id, document_id)
     if not meta:
+        # Either the document doesn't exist or it belongs to another user.
+        # Return 404 in both cases — leak nothing about cross-user state.
         raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
 
-    # Quota check if user_id provided
-    if user_id:
-        quota = await db.check_quota(user_id)
-        if not quota.get("allowed", True):
-            raise HTTPException(
-                status_code=403,
-                detail=f"Quota exceeded. Plan: {quota.get('plan', 'free')}, "
-                       f"used: {quota.get('used', 0)}/{quota.get('limit', 0)}. "
-                       "Upgrade your plan to continue.",
-            )
+    # Quota check (always — caller is authenticated)
+    quota = await db.check_quota(user_id)
+    if not quota.get("allowed", True):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Quota exceeded. Plan: {quota.get('plan', 'free')}, "
+                   f"used: {quota.get('used', 0)}/{quota.get('limit', 0)}. "
+                   "Upgrade your plan to continue.",
+        )
 
     # If already analysed, return cached result
-    existing_result = storage.get_result(document_id)
+    existing_result = await storage.get_result(user_id, document_id)
     if existing_result:
         async def _cached_stream() -> AsyncGenerator[str, None]:
             event = SSEEvent(agent="pipeline", status="cached", data={"document_id": document_id})
@@ -293,8 +305,6 @@ async def analyze_document(
         return EventSourceResponse(_cached_stream())
 
     async def _event_stream() -> AsyncGenerator[str, None]:
-        pipeline_start = time.perf_counter()
-
         try:
             # ── Stage 1: Ingestion ───────────────────────────────────────
             yield json.dumps(
@@ -304,7 +314,7 @@ async def analyze_document(
             from ingestion import IngestorPipeline
 
             ingestor = IngestorPipeline(llm_client=llm_client, settings=settings)
-            upload_path = storage.get_upload_path(document_id)
+            upload_path = await storage.get_upload_path(user_id, document_id)
             if not upload_path:
                 yield json.dumps(
                     SSEEvent(agent="ingestor", status="error", error="Upload file not found").model_dump(),
@@ -313,22 +323,32 @@ async def analyze_document(
                 return
 
             ingest_start = time.perf_counter()
-            clauses, page_count = await ingestor.ingest(
-                document_id=document_id,
-                file_path=str(upload_path),
-                content_type=meta.content_type,
-            )
+            try:
+                clauses, page_count = await ingestor.ingest(
+                    document_id=document_id,
+                    file_path=str(upload_path),
+                    content_type=meta.content_type,
+                )
+            finally:
+                # Supabase backend hands us a tempfile copy; clean it up so
+                # the OS temp dir doesn't fill up over time. For LocalStorage
+                # this is a no-op because the path lives under data/uploads/.
+                _cleanup_tempfile(upload_path)
             ingest_ms = int((time.perf_counter() - ingest_start) * 1000)
 
-            # Update metadata
-            storage.update_status(document_id, "processing", clause_count=len(clauses))
-            meta_updated = storage.get_metadata(document_id)
+            # Update metadata (page_count + clause_count + status)
+            await storage.update_status(
+                user_id, document_id, "processing", clause_count=len(clauses)
+            )
+            meta_updated = await storage.get_metadata(user_id, document_id)
             if meta_updated:
                 meta_updated.page_count = page_count
-                storage.save_metadata(meta_updated)
+                await storage.save_metadata(user_id, meta_updated)
 
             # Save clauses for RAG
-            storage.save_clauses(document_id, [c.model_dump() for c in clauses])
+            await storage.save_clauses(
+                user_id, document_id, [c.model_dump() for c in clauses]
+            )
 
             yield json.dumps(
                 SSEEvent(
@@ -349,7 +369,7 @@ async def analyze_document(
                     ).model_dump(),
                     default=str,
                 )
-                storage.update_status(document_id, "error")
+                await storage.update_status(user_id, document_id, "error")
                 return
 
             # ── Stage 2: Agent orchestration ─────────────────────────────
@@ -359,15 +379,19 @@ async def analyze_document(
                 llm_client=llm_client, settings=settings, storage=storage
             )
 
-            async for event in orchestrator.run(document_id=document_id, clauses=clauses):
+            async for event in orchestrator.run(
+                document_id=document_id, clauses=clauses, user_id=user_id
+            ):
                 yield json.dumps(event, default=str)
 
             # Record usage for quota tracking
-            if user_id:
-                try:
-                    await db.record_usage(user_id, document_id, action="analyze")
-                except Exception as usage_exc:
-                    logger.warning(f"Usage recording failed: {usage_exc}", extra={"status": "usage_error"})
+            try:
+                await db.record_usage(user_id, document_id, action="analyze")
+            except Exception as usage_exc:
+                logger.warning(
+                    f"Usage recording failed: {usage_exc}",
+                    extra={"status": "usage_error"},
+                )
 
             # Index clauses for RAG chat if embedding manager is available
             if request.app.state.embedding_manager:
@@ -376,7 +400,10 @@ async def analyze_document(
                     chunks = chunk_clauses([c.model_dump() for c in clauses])
                     request.app.state.embedding_manager.index_chunks(document_id, chunks)
                 except Exception as rag_exc:
-                    logger.warning(f"RAG indexing failed: {rag_exc}", extra={"status": "rag_index_error"})
+                    logger.warning(
+                        f"RAG indexing failed: {rag_exc}",
+                        extra={"status": "rag_index_error"},
+                    )
 
         except Exception as exc:
             logger.error(
@@ -384,7 +411,10 @@ async def analyze_document(
                 extra={"status": "pipeline_error"},
                 exc_info=True,
             )
-            storage.update_status(document_id, "error")
+            try:
+                await storage.update_status(user_id, document_id, "error")
+            except Exception:
+                pass
             yield json.dumps(
                 SSEEvent(
                     agent="pipeline",
@@ -397,16 +427,33 @@ async def analyze_document(
     return EventSourceResponse(_event_stream())
 
 
+def _cleanup_tempfile(path) -> None:  # noqa: ANN001
+    """Delete `path` if it lives under the OS temp dir. No-op otherwise."""
+    import tempfile as _tf
+    from pathlib import Path as _P
+
+    try:
+        p = _P(path) if not isinstance(path, _P) else path
+        tmp_root = _P(_tf.gettempdir()).resolve()
+        if tmp_root in p.resolve().parents:
+            p.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 # ── GET /api/results/{document_id} ──────────────────────────────────────────
 
 @app.get("/api/results/{document_id}", response_model=AnalysisResult)
-async def get_results(document_id: str, request: Request) -> AnalysisResult:
+async def get_results(
+    document_id: str,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> AnalysisResult:
     """Return the complete analysis result for a document."""
     storage = _storage(request)
-    result = storage.get_result(document_id)
+    result = await storage.get_result(user_id, document_id)
     if not result:
-        # Check if document exists but not yet analysed
-        meta = storage.get_metadata(document_id)
+        meta = await storage.get_metadata(user_id, document_id)
         if meta:
             raise HTTPException(
                 status_code=404,
@@ -419,7 +466,11 @@ async def get_results(document_id: str, request: Request) -> AnalysisResult:
 # ── POST /api/negotiate/stream (AI vs AI negotiation) ──────────────────────
 
 @app.post("/api/negotiate/stream")
-async def negotiate_stream(body: NegotiateRequest, request: Request) -> EventSourceResponse:
+async def negotiate_stream(
+    body: NegotiateRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> EventSourceResponse:
     """Run an AI vs AI negotiation debate and stream results via SSE."""
     llm_client = _llm(request)
     settings = _settings(request)
@@ -437,12 +488,13 @@ async def negotiate_stream(body: NegotiateRequest, request: Request) -> EventSou
     agent1_config = settings.agent_models.negotiator_agent1
     agent2_config = settings.agent_models.negotiator_agent2
 
-    # Build document context if provided
+    # Build document context if provided. Ownership-scoped: a document_id from
+    # another user's namespace returns None and is treated as "no context".
     doc_context = ""
     if body.document_id:
-        result = storage.get_result(body.document_id)
+        result = await storage.get_result(user_id, body.document_id)
         if result:
-            clauses_raw = storage.get_clauses(body.document_id)
+            clauses_raw = await storage.get_clauses(user_id, body.document_id)
             if not clauses_raw:
                 clauses_raw = [c.model_dump() for c in result.clauses]
             clause_texts = [
@@ -606,7 +658,11 @@ async def negotiate_stream(body: NegotiateRequest, request: Request) -> EventSou
 # NOTE: Static routes MUST be defined before parameterized /api/chat/{document_id}
 
 @app.post("/api/chat/stream")
-async def general_chat_stream(body: ChatRequest, request: Request) -> EventSourceResponse:
+async def general_chat_stream(
+    body: ChatRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),  # noqa: ARG001
+) -> EventSourceResponse:
     """Streaming general legal advisor chat via SSE."""
     llm_client = _llm(request)
     settings = _settings(request)
@@ -657,7 +713,11 @@ async def general_chat_stream(body: ChatRequest, request: Request) -> EventSourc
 # ── POST /api/chat (general legal advisor — no document needed) ────────────
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def general_chat(body: ChatRequest, request: Request) -> ChatResponse:
+async def general_chat(
+    body: ChatRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),  # noqa: ARG001
+) -> ChatResponse:
     """General legal advisor chat — no document upload required."""
     llm_client = _llm(request)
     settings = _settings(request)
@@ -685,19 +745,22 @@ async def general_chat(body: ChatRequest, request: Request) -> ChatResponse:
 
 @app.post("/api/chat/{document_id}", response_model=ChatResponse)
 async def chat_with_document(
-    document_id: str, body: ChatRequest, request: Request
+    document_id: str,
+    body: ChatRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
 ) -> ChatResponse:
     """RAG-powered chat about a specific document."""
     storage = _storage(request)
     llm_client = _llm(request)
     settings = _settings(request)
 
-    # Verify document and results exist
-    meta = storage.get_metadata(document_id)
+    # Verify document and results exist (and that the caller owns them)
+    meta = await storage.get_metadata(user_id, document_id)
     if not meta:
         raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
 
-    result = storage.get_result(document_id)
+    result = await storage.get_result(user_id, document_id)
     if not result:
         raise HTTPException(
             status_code=400,
@@ -707,7 +770,7 @@ async def chat_with_document(
     if not body.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    clauses_raw = storage.get_clauses(document_id)
+    clauses_raw = await storage.get_clauses(user_id, document_id)
     if not clauses_raw:
         clauses_raw = [c.model_dump() for c in result.clauses]
 
@@ -789,7 +852,10 @@ async def chat_with_document(
 
 @app.post("/api/chat/{document_id}/stream")
 async def document_chat_stream(
-    document_id: str, body: ChatRequest, request: Request
+    document_id: str,
+    body: ChatRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
 ) -> EventSourceResponse:
     """Streaming document-aware chat via SSE."""
     llm_client = _llm(request)
@@ -799,11 +865,11 @@ async def document_chat_stream(
     if not body.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    meta = storage.get_metadata(document_id)
+    meta = await storage.get_metadata(user_id, document_id)
     if not meta:
         raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
 
-    result = storage.get_result(document_id)
+    result = await storage.get_result(user_id, document_id)
     chat_config = settings.agent_models.rag_chat
 
     # Conversation memory for multi-turn context
@@ -818,7 +884,7 @@ async def document_chat_stream(
         try:
             if result:
                 # Build context from stored clauses
-                clauses_raw = storage.get_clauses(document_id)
+                clauses_raw = await storage.get_clauses(user_id, document_id)
                 if not clauses_raw:
                     clauses_raw = [c.model_dump() for c in result.clauses]
 
@@ -898,16 +964,17 @@ async def generate_report(
     document_id: str,
     request: Request,
     export_type: str = Query(default="negotiation_brief"),
+    user_id: str = Depends(get_current_user_id),
 ) -> StreamingResponse:
     """Generate and return a PDF report for the given document."""
     storage = _storage(request)
     generator: NegotiationBriefGenerator = request.app.state.report_generator
 
-    meta = storage.get_metadata(document_id)
+    meta = await storage.get_metadata(user_id, document_id)
     if not meta:
         raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
 
-    result = storage.get_result(document_id)
+    result = await storage.get_result(user_id, document_id)
     if not result:
         raise HTTPException(
             status_code=400,
@@ -944,20 +1011,24 @@ async def generate_report(
 # ── POST /api/compare ───────────────────────────────────────────────────────
 
 @app.post("/api/compare")
-async def compare_documents(body: CompareRequest, request: Request) -> dict:
+async def compare_documents(
+    body: CompareRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> dict:
     """Compare two analysed documents clause-by-clause with risk deltas."""
     storage = _storage(request)
 
-    result_1 = storage.get_result(body.document_id_1)
-    result_2 = storage.get_result(body.document_id_2)
+    result_1 = await storage.get_result(user_id, body.document_id_1)
+    result_2 = await storage.get_result(user_id, body.document_id_2)
 
     if not result_1:
         raise HTTPException(status_code=404, detail=f"Results not found for document {body.document_id_1}.")
     if not result_2:
         raise HTTPException(status_code=404, detail=f"Results not found for document {body.document_id_2}.")
 
-    meta_1 = storage.get_metadata(body.document_id_1)
-    meta_2 = storage.get_metadata(body.document_id_2)
+    meta_1 = await storage.get_metadata(user_id, body.document_id_1)
+    meta_2 = await storage.get_metadata(user_id, body.document_id_2)
 
     # Build risk maps
     risk_map_1: dict[int, dict] = {}
@@ -1056,15 +1127,8 @@ async def compare_documents(body: CompareRequest, request: Request) -> dict:
 
 @app.get("/api/health")
 async def health_check(request: Request) -> dict:
-    """Return service health, available models, and storage statistics."""
+    """Return service health and available models. Public — no auth required."""
     settings = _settings(request)
-    storage = _storage(request)
-
-    docs = storage.list_documents()
-    total_docs = len(docs)
-    completed = sum(1 for d in docs if d.status == "complete")
-    processing = sum(1 for d in docs if d.status == "processing")
-    errored = sum(1 for d in docs if d.status == "error")
 
     agent_models = settings.agent_models
     models_info: dict[str, dict[str, str]] = {}
@@ -1083,13 +1147,9 @@ async def health_check(request: Request) -> dict:
         "status": "healthy",
         "service": "Suits AI",
         "version": "1.0.0",
+        "auth_enabled": settings.auth_enabled,
+        "supabase_configured": settings.supabase_configured,
         "available_models": models_info,
-        "storage": {
-            "total_documents": total_docs,
-            "completed": completed,
-            "processing": processing,
-            "errored": errored,
-        },
         "config": {
             "max_file_size_mb": settings.max_file_size_mb,
             "max_retries": settings.max_retries,
@@ -1098,85 +1158,117 @@ async def health_check(request: Request) -> dict:
     }
 
 
+def _serialise_profile(profile: dict, quota: dict) -> UserResponse:
+    """Coerce a profile row (from either backend) into the UserResponse shape."""
+    return UserResponse(
+        id=str(profile.get("id", "")),
+        name=profile.get("name") or "",
+        email=profile.get("email"),
+        role=profile.get("role") or "individual",
+        organization=profile.get("organization") or "",
+        use_case=profile.get("use_case") or "",
+        jurisdiction=profile.get("jurisdiction") or "India",
+        plan=profile.get("plan") or "free",
+        documents_used=int(profile.get("documents_used") or 0),
+        quota=quota,
+    )
+
+
+# ── GET /api/profile ───────────────────────────────────────────────────────
+
+@app.get("/api/profile", response_model=UserResponse)
+async def get_profile(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> UserResponse:
+    """Return the authenticated user's profile and quota."""
+    db = _db(request)
+    profile = await db.get_or_create_profile(user_id)
+    quota = await db.check_quota(user_id)
+    return _serialise_profile(profile, quota)
+
+
+# ── PATCH /api/profile ─────────────────────────────────────────────────────
+
+@app.patch("/api/profile", response_model=UserResponse)
+async def update_profile(
+    body: UserUpdateRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> UserResponse:
+    """Update editable profile fields. Plan/quota are not user-mutable."""
+    db = _db(request)
+    profile = await db.update_profile(user_id, **body.model_dump(exclude_none=True))
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found.")
+    quota = await db.check_quota(user_id)
+    return _serialise_profile(profile, quota)
+
+
 # ── POST /api/onboard ──────────────────────────────────────────────────────
+# Kept for the onboarding flow — same contract as PATCH /api/profile but
+# accepts the dedicated OnboardingRequest body.
 
 @app.post("/api/onboard", response_model=UserResponse)
-async def onboard_user(body: OnboardingRequest, request: Request) -> UserResponse:
-    """Create or retrieve a user during onboarding."""
+async def onboard_user(
+    body: OnboardingRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> UserResponse:
+    """Persist the onboarding answers onto the authenticated user's profile."""
     db = _db(request)
-
-    user = await db.create_user(
+    await db.get_or_create_profile(user_id, name=body.name)
+    profile = await db.update_profile(
+        user_id,
         name=body.name,
-        email=body.email,
         role=body.role,
         organization=body.organization,
         use_case=body.use_case,
         jurisdiction=body.jurisdiction,
     )
-
-    quota = await db.check_quota(user["id"])
-    return UserResponse(**user, quota=quota)
-
-
-# ── GET /api/user/{user_id} ────────────────────────────────────────────────
-
-@app.get("/api/user/{user_id}", response_model=UserResponse)
-async def get_user(user_id: str, request: Request) -> UserResponse:
-    """Get user profile and quota info."""
-    db = _db(request)
-    user = await db.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+    if not profile:
+        raise HTTPException(status_code=500, detail="Failed to persist profile.")
     quota = await db.check_quota(user_id)
-    return UserResponse(**user, quota=quota)
+    return _serialise_profile(profile, quota)
 
 
-# ── PATCH /api/user/{user_id} ──────────────────────────────────────────────
+# ── GET /api/profile/quota ─────────────────────────────────────────────────
 
-@app.patch("/api/user/{user_id}", response_model=UserResponse)
-async def update_user(user_id: str, body: UserUpdateRequest, request: Request) -> UserResponse:
-    """Update user profile fields (plan/quota cannot be changed here)."""
+@app.get("/api/profile/quota", response_model=QuotaResponse)
+async def check_my_quota(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> QuotaResponse:
+    """Check the authenticated user's remaining document quota."""
     db = _db(request)
-    user = await db.update_user(user_id, **body.model_dump(exclude_none=True))
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+    await db.get_or_create_profile(user_id)
     quota = await db.check_quota(user_id)
-    return UserResponse(**user, quota=quota)
-
-
-# ── GET /api/user/{user_id}/quota ──────────────────────────────────────────
-
-@app.get("/api/user/{user_id}/quota", response_model=QuotaResponse)
-async def check_quota(user_id: str, request: Request) -> QuotaResponse:
-    """Check user's remaining document quota."""
-    db = _db(request)
-    quota = await db.check_quota(user_id)
-    if not quota.get("allowed") and quota.get("reason") == "User not found":
-        raise HTTPException(status_code=404, detail="User not found.")
     return QuotaResponse(**quota)
 
 
-# ── GET /api/user/{user_id}/usage ──────────────────────────────────────────
+# ── GET /api/profile/usage ─────────────────────────────────────────────────
 
-@app.get("/api/user/{user_id}/usage")
-async def get_usage(user_id: str, request: Request) -> list[dict]:
-    """Get user's document analysis history."""
+@app.get("/api/profile/usage")
+async def get_my_usage(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> list[dict]:
+    """Get the authenticated user's document analysis history."""
     db = _db(request)
-    user = await db.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
     return await db.get_usage(user_id)
 
 
 # ── POST /api/payments/create ──────────────────────────────────────────────
 
 @app.post("/api/payments/create")
-async def create_payment(body: PaymentCreateRequest, request: Request, user_id: str = Query(...)) -> dict:
+async def create_payment(
+    body: PaymentCreateRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> dict:
     """Create a payment order for plan upgrade."""
     db = _db(request)
-    user = await db.get_user(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+    await db.get_or_create_profile(user_id)
 
     payment = await db.create_payment(user_id=user_id, plan=body.plan)
 
@@ -1192,8 +1284,18 @@ async def create_payment(body: PaymentCreateRequest, request: Request, user_id: 
 # ── POST /api/payments/verify ─────────────────────────────────────────────
 
 @app.post("/api/payments/verify")
-async def verify_payment(body: PaymentVerifyRequest, request: Request) -> dict:
-    """Verify payment and upgrade user plan."""
+async def verify_payment(
+    body: PaymentVerifyRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> dict:
+    """Verify payment and upgrade the caller's plan.
+
+    NOTE: the Razorpay HMAC signature check (`razorpay_signature` against
+    `razorpay_order_id|razorpay_payment_id` with the webhook secret) is NOT
+    implemented yet. Do not treat this endpoint as production-secure for
+    payments.
+    """
     db = _db(request)
 
     payment = await db.complete_payment(
@@ -1203,12 +1305,16 @@ async def verify_payment(body: PaymentVerifyRequest, request: Request) -> dict:
 
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found.")
+    if payment["user_id"] != user_id:
+        # The payment belongs to a different account — refuse to upgrade
+        # this caller's plan.
+        raise HTTPException(status_code=403, detail="Payment does not belong to caller.")
 
-    user = await db.get_user(payment["user_id"])
-    quota = await db.check_quota(payment["user_id"])
+    profile = await db.get_profile(user_id)
+    quota = await db.check_quota(user_id)
 
     return {
         "status": "success",
         "plan": payment["plan"],
-        "user": UserResponse(**user, quota=quota).model_dump() if user else None,
+        "user": _serialise_profile(profile, quota).model_dump() if profile else None,
     }
