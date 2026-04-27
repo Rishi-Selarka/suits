@@ -37,3 +37,8 @@ services:
         value: INFO
       - key: MAX_FILE_SIZE_MB
         value: "20"
+      # The RAG embedding model loads ~150-200 MB at startup. The 512 MB
+      # free instance OOM-kills the worker before uvicorn binds. Keep RAG
+      # off here; flip to true after upgrading to Starter (2 GB RAM).
+      - key: ENABLE_RAG
+        value: "false"

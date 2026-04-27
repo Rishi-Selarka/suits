@@ -75,6 +75,13 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
+    # RAG embedding model loads ~150-200 MB into memory at startup. On a
+    # 512 MB Render free instance that's enough to OOM-kill the worker
+    # before uvicorn finishes binding the port. Set ENABLE_RAG=false to
+    # skip the load — `chat_with_document` will fall back to a simpler
+    # clause-as-context path that still works without retrieval.
+    enable_rag: bool = True
+
     # CORS — accept either a JSON array (`["a","b"]`) or a comma-separated
     # string (`a,b,c`) to survive PaaS dashboards (Render, Railway, …) that
     # silently strip JSON brackets/quotes from env var values. NoDecode
