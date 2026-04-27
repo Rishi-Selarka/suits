@@ -139,15 +139,13 @@ export default function AppLayout() {
 
   // ── Run All Tools (preload from results view) ──
   const [runAllPreload, setRunAllPreload] = useState<AnalysisResult | null>(null)
-  const [runAllDocId, setRunAllDocId] = useState<string | undefined>()
   const [runAllFilename, setRunAllFilename] = useState('')
 
   const handleRunAllTools = useCallback(() => {
     setRunAllPreload(currentResult)
-    setRunAllDocId(activeDocumentId)
     setRunAllFilename(activeFilename)
     handleViewChange('run-all-tools')
-  }, [currentResult, activeDocumentId, activeFilename, handleViewChange])
+  }, [currentResult, activeFilename, handleViewChange])
 
   const handleViewDocument = useCallback((docId: string) => {
     setActiveDocumentId(docId)
@@ -222,7 +220,6 @@ export default function AppLayout() {
           <div style={{ display: activeView === 'run-all-tools' ? undefined : 'none' }} className="h-full">
             <RunAllToolsPage
               preloadResult={runAllPreload}
-              preloadDocumentId={runAllDocId}
               preloadFilename={runAllFilename}
             />
           </div>

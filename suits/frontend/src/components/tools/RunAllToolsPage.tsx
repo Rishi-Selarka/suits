@@ -81,11 +81,10 @@ const TABS = [
 
 interface RunAllToolsPageProps {
   preloadResult?: AnalysisResult | null
-  preloadDocumentId?: string
   preloadFilename?: string
 }
 
-export default function RunAllToolsPage({ preloadResult, preloadDocumentId, preloadFilename }: RunAllToolsPageProps) {
+export default function RunAllToolsPage({ preloadResult, preloadFilename }: RunAllToolsPageProps) {
   const [phase, setPhase] = useState<Phase>('empty')
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [documentId, setDocumentId] = useState<string | null>(null)

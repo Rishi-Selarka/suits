@@ -6,7 +6,8 @@ import { easeOutExpo } from '@/lib/motion'
 
 interface Source {
   clause_id: number
-  text: string
+  title?: string
+  text?: string
   page: number
 }
 
