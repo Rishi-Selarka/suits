@@ -1,0 +1,39 @@
+# Render Blueprint — `Rishi-Selarka/suits`.
+#
+# Render auto-creates this service when you connect the repo via
+# Dashboard → New → Blueprint. Every commit to `main` triggers a deploy.
+#
+# Set the secret env vars in the Render dashboard before the first deploy
+# (they're listed below with `sync: false` so they prompt on creation
+# instead of being committed in git).
+
+services:
+  - type: web
+    name: suits-api
+    runtime: docker
+    plan: free
+    region: oregon
+    rootDir: suits/backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: documents
+      # CORS_ORIGINS must be a JSON array string. Set this to the Vercel
+      # production URL (and any preview domains you want to allow), e.g.
+      # ["https://suits.vercel.app","http://localhost:5173"]
+      - key: CORS_ORIGINS
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+      - key: MAX_FILE_SIZE_MB
+        value: "20"
