@@ -1,7 +1,12 @@
 import axios from 'axios'
 import { getAccessToken } from '@/lib/supabase'
 
-const API_BASE = '/api'
+// In dev, Vite proxies /api → http://localhost:8000 (see vite.config.ts).
+// In prod (Vercel), set VITE_API_BASE to the Render backend URL — e.g.
+//   VITE_API_BASE=https://suits-api.onrender.com
+// and we'll prefix every request with `${VITE_API_BASE}/api` instead.
+const apiBaseEnv = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/+$/, '')
+const API_BASE = apiBaseEnv ? `${apiBaseEnv}/api` : '/api'
 
 export const api = axios.create({
   baseURL: API_BASE,
