@@ -83,10 +83,23 @@ def _decode_token(token: str) -> dict:
 def get_current_user_id(authorization: str | None = Header(default=None)) -> str:
     """Require a valid Supabase JWT. Returns the Supabase user uuid (string).
 
-    In dev mode (no SUPABASE_JWT_SECRET), returns a fixed placeholder user id
-    so endpoints remain usable without setting up auth.
+    In dev mode (no Supabase configured at all) returns a fixed placeholder
+    user id so endpoints remain usable locally without setting up auth.
+
+    A "production-looking" config — i.e. SUPABASE_URL set — but missing
+    SUPABASE_JWT_SECRET is rejected here as 503 instead of silently falling
+    back to the dev user. Without that check, an operator who forgets to set
+    the JWT secret would deploy with every request mapping to one shared
+    placeholder identity, which is worse than failing closed.
     """
     settings = get_settings()
+    if settings.supabase_configured and not settings.auth_enabled:
+        # URL/service-role key present, JWT secret missing — refuse rather than
+        # decay to dev mode in a deployed environment.
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auth is misconfigured: SUPABASE_JWT_SECRET is not set.",
+        )
     if not settings.auth_enabled:
         return DEV_USER_ID
 
