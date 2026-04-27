@@ -387,6 +387,58 @@ export async function healthCheck(): Promise<Record<string, unknown>> {
   return data
 }
 
+// ── Profile (server-side) ──
+
+export interface ProfileQuota {
+  allowed: boolean
+  used: number
+  limit: number
+  plan: string
+  remaining: number
+}
+
+export interface ProfileResponse {
+  id: string
+  name: string
+  email: string | null
+  role: 'individual' | 'lawyer' | 'business' | 'student'
+  organization: string
+  use_case: string
+  jurisdiction: string
+  plan: string
+  documents_used: number
+  quota: ProfileQuota | null
+}
+
+export interface ProfileUpdate {
+  name?: string
+  role?: 'individual' | 'lawyer' | 'business' | 'student'
+  organization?: string
+  use_case?: string
+  jurisdiction?: string
+}
+
+export async function getProfile(): Promise<ProfileResponse> {
+  const { data } = await api.get<ProfileResponse>('/profile')
+  return data
+}
+
+export async function updateProfile(updates: ProfileUpdate): Promise<ProfileResponse> {
+  const { data } = await api.patch<ProfileResponse>('/profile', updates)
+  return data
+}
+
+export async function onboard(updates: {
+  name: string
+  role: 'individual' | 'lawyer' | 'business' | 'student'
+  organization?: string
+  use_case?: string
+  jurisdiction?: string
+}): Promise<ProfileResponse> {
+  const { data } = await api.post<ProfileResponse>('/onboard', updates)
+  return data
+}
+
 // ── Negotiation types & stream ──
 
 export interface NegotiateEvent {

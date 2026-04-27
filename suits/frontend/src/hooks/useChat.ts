@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { type ChatResponse, chatWithDocument } from '@/api/client'
+import { chatWithDocument } from '@/api/client'
 import { type ChatMessage } from '@/context/UserContext'
 
 export function useChat(documentId: string) {

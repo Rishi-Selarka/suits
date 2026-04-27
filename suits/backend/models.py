@@ -27,6 +27,10 @@ class DocumentMetadata(BaseModel):
     file_size_bytes: int = 0
     content_type: str = ""
     status: Literal["uploaded", "processing", "complete", "error"] = "uploaded"
+    # Internal: where the bytes live. For Supabase backend this is the storage
+    # bucket path (`<user_id>/<doc_id>_<filename>`). For the local fallback
+    # this is the absolute path on disk. Empty for unsaved metadata.
+    storage_path: str = ""
 
 
 # ── Agent outputs ────────────────────────────────────────────────────────────
