@@ -194,12 +194,20 @@ class SupabaseBackend:
         self,
         payment_id: str,
         razorpay_payment_id: str,
+        user_id: str,
     ) -> dict[str, Any] | None:
+        """Mark a payment paid and upgrade the plan.
+
+        Caller-scoped: lookup and update both filter on `(payment_id, user_id)`,
+        so a caller who knows another user's payment id cannot trigger a plan
+        upgrade on that other account.
+        """
         def _run() -> dict[str, Any] | None:
             res = (
                 self.client.table("payments")
                 .select("*")
                 .eq("id", payment_id)
+                .eq("user_id", user_id)
                 .limit(1)
                 .execute()
             )
@@ -213,10 +221,10 @@ class SupabaseBackend:
             self.client.table("payments").update({
                 "razorpay_payment_id": razorpay_payment_id,
                 "status": "paid",
-            }).eq("id", payment_id).execute()
+            }).eq("id", payment_id).eq("user_id", user_id).execute()
             self.client.table("profiles").update({
                 "plan": payment["plan"],
-            }).eq("id", payment["user_id"]).execute()
+            }).eq("id", user_id).execute()
 
             payment["status"] = "paid"
             payment["razorpay_payment_id"] = razorpay_payment_id
@@ -408,8 +416,12 @@ class SqliteBackend:
         self,
         payment_id: str,
         razorpay_payment_id: str,
+        user_id: str,
     ) -> dict[str, Any] | None:
-        cursor = await self.db.execute("SELECT * FROM payments WHERE id = ?", (payment_id,))
+        cursor = await self.db.execute(
+            "SELECT * FROM payments WHERE id = ? AND user_id = ?",
+            (payment_id, user_id),
+        )
         payment = await cursor.fetchone()
         if not payment:
             return None
@@ -419,12 +431,13 @@ class SqliteBackend:
 
         now = time.time()
         await self.db.execute(
-            "UPDATE payments SET razorpay_payment_id = ?, status = 'paid', updated_at = ? WHERE id = ?",
-            (razorpay_payment_id, now, payment_id),
+            "UPDATE payments SET razorpay_payment_id = ?, status = 'paid', updated_at = ? "
+            "WHERE id = ? AND user_id = ?",
+            (razorpay_payment_id, now, payment_id, user_id),
         )
         await self.db.execute(
             "UPDATE profiles SET plan = ?, updated_at = ? WHERE id = ?",
-            (payment["plan"], now, payment["user_id"]),
+            (payment["plan"], now, user_id),
         )
         await self.db.commit()
         payment["status"] = "paid"
@@ -523,9 +536,14 @@ class Database:
         )
 
     async def complete_payment(
-        self, payment_id: str, razorpay_payment_id: str
+        self,
+        payment_id: str,
+        razorpay_payment_id: str,
+        user_id: str,
     ) -> dict[str, Any] | None:
-        return await self.backend.complete_payment(payment_id, razorpay_payment_id)
+        return await self.backend.complete_payment(
+            payment_id, razorpay_payment_id, user_id
+        )
 
     async def get_user_payments(self, user_id: str) -> list[dict[str, Any]]:
         return await self.backend.get_user_payments(user_id)
