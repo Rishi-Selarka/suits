@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import os
 import warnings
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class ModelConfig(BaseModel):
@@ -74,8 +75,38 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
 
-    # CORS
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    # CORS — accept either a JSON array (`["a","b"]`) or a comma-separated
+    # string (`a,b,c`) to survive PaaS dashboards (Render, Railway, …) that
+    # silently strip JSON brackets/quotes from env var values. NoDecode
+    # disables pydantic-settings' eager JSON-parse for this field so our
+    # validator below sees the raw string.
+    cors_origins: Annotated[list[str], NoDecode] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, value: object) -> object:
+        if value is None:
+            return ["http://localhost:3000", "http://localhost:5173"]
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return ["http://localhost:3000", "http://localhost:5173"]
+            # JSON array form first.
+            if stripped.startswith("["):
+                try:
+                    parsed = json.loads(stripped)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed]
+                except json.JSONDecodeError:
+                    pass  # fall through to CSV
+            # Comma-separated fallback.
+            return [item.strip() for item in stripped.split(",") if item.strip()]
+        return value
 
     # ── Supabase (optional — when unset, auth is skipped and the app uses
     #    the local file-based storage + SQLite path exactly as before) ──
