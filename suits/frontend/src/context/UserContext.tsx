@@ -43,9 +43,11 @@ export interface DownloadItem {
   downloadedAt: number
 }
 
+type UserUpdater = Partial<UserData> | ((prev: UserData) => Partial<UserData>)
+
 interface UserContextType {
   user: UserData
-  setUser: (data: Partial<UserData>) => void
+  setUser: (data: UserUpdater) => void
   resetUser: () => void
   chatHistory: ChatHistoryItem[]
   addChat: (chat: ChatHistoryItem) => void
@@ -148,8 +150,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads))
   }, [downloads])
 
-  const setUser = (data: Partial<UserData>) => {
-    setUserState(prev => ({ ...prev, ...data }))
+  const setUser = (data: UserUpdater) => {
+    setUserState(prev => ({ ...prev, ...(typeof data === 'function' ? data(prev) : data) }))
   }
 
   const resetUser = () => {
