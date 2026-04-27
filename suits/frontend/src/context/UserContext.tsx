@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
+import { useAuth } from '@/context/AuthContext'
 
 export interface UserData {
   name: string
@@ -13,7 +14,7 @@ export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
-  sources?: { clause_id: number; text: string; page: number }[]
+  sources?: { clause_id: number; title?: string; text?: string; page: number }[]
   timestamp?: number
 }
 
@@ -59,6 +60,7 @@ const STORAGE_KEY = 'suits-user'
 const CHAT_HISTORY_KEY = 'suits-chats'
 const DOCUMENTS_KEY = 'suits-documents'
 const DOWNLOADS_KEY = 'suits-downloads'
+const OWNER_KEY = 'suits-owner'
 
 const defaultUser: UserData = {
   name: '',
@@ -102,7 +104,29 @@ function loadDownloads(): DownloadItem[] {
   return []
 }
 
+function clearLocalStorage() {
+  localStorage.removeItem(STORAGE_KEY)
+  localStorage.removeItem(CHAT_HISTORY_KEY)
+  localStorage.removeItem(DOCUMENTS_KEY)
+  localStorage.removeItem(DOWNLOADS_KEY)
+}
+
 export function UserProvider({ children }: { children: ReactNode }) {
+  const { user: authUser, enabled: authEnabled } = useAuth()
+  const ownerId = authEnabled ? authUser?.id ?? null : 'local'
+
+  // If stored data belongs to a different account, wipe it before first read.
+  // Runs synchronously on mount so initial state below sees the clean slate.
+  if (typeof window !== 'undefined' && ownerId) {
+    const storedOwner = localStorage.getItem(OWNER_KEY)
+    if (storedOwner && storedOwner !== ownerId) {
+      clearLocalStorage()
+    }
+    if (storedOwner !== ownerId) {
+      localStorage.setItem(OWNER_KEY, ownerId)
+    }
+  }
+
   const [user, setUserState] = useState<UserData>(loadUser)
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>(loadChats)
   const [documents, setDocuments] = useState<DocumentItem[]>(loadDocuments)
@@ -133,10 +157,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setChatHistory([])
     setDocuments([])
     setDownloads([])
-    localStorage.removeItem(STORAGE_KEY)
-    localStorage.removeItem(CHAT_HISTORY_KEY)
-    localStorage.removeItem(DOCUMENTS_KEY)
-    localStorage.removeItem(DOWNLOADS_KEY)
+    clearLocalStorage()
+    localStorage.removeItem(OWNER_KEY)
   }
 
   const addChat = useCallback((chat: ChatHistoryItem) => {

@@ -1,53 +1,41 @@
-import { useState } from 'react'
-import { AnimatePresence } from 'framer-motion'
-import SplashScreen from '@/components/splash/SplashScreen'
 import OnboardingFlow from '@/components/onboarding/OnboardingFlow'
 import { useUser } from '@/context/UserContext'
-
-type Phase = 'splash' | 'onboarding'
+import { onboard } from '@/api/client'
+import { answersToOnboardPayload, profileToUserData } from '@/lib/profile'
 
 interface WelcomeProps {
   onComplete: () => void
 }
 
 export default function Welcome({ onComplete }: WelcomeProps) {
-  const { setUser } = useUser()
-  const [phase, setPhase] = useState<Phase>('splash')
-  const [userName, setUserName] = useState('')
+  const { user, setUser } = useUser()
 
-  const handleNameSubmit = (name: string) => {
-    setUserName(name)
-    setUser({ name })
-    setPhase('onboarding')
-  }
-
-  const handleOnboardingComplete = (data: {
+  const handleOnboardingComplete = async (data: {
     location: string
     profession: string
     purpose: string
   }) => {
-    setUser({
-      ...data,
-      onboarded: true,
-    })
+    // Optimistically update the local cache so the UI advances immediately,
+    // then persist to the server. If the server call fails the user can still
+    // use the app — onboarding will retry next time the profile is fetched.
+    setUser({ ...data, onboarded: true })
     onComplete()
+
+    try {
+      const payload = answersToOnboardPayload({ name: user.name, ...data })
+      const profile = await onboard(payload)
+      setUser(profileToUserData(profile))
+    } catch (err) {
+      console.error('Failed to persist onboarding to server', err)
+    }
   }
 
   return (
     <div className="fixed inset-0 bg-cream">
-      <AnimatePresence mode="wait">
-        {phase === 'splash' && (
-          <SplashScreen key="splash" onContinue={handleNameSubmit} />
-        )}
-
-        {phase === 'onboarding' && (
-          <OnboardingFlow
-            key="onboarding"
-            userName={userName}
-            onComplete={handleOnboardingComplete}
-          />
-        )}
-      </AnimatePresence>
+      <OnboardingFlow
+        userName={user.name || 'there'}
+        onComplete={handleOnboardingComplete}
+      />
     </div>
   )
 }

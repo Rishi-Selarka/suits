@@ -2,6 +2,9 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Camera, Check, MapPin, Briefcase, Target, User, LogOut, ArrowLeft } from 'lucide-react'
 import { useUser } from '@/context/UserContext'
+import { useAuth } from '@/context/AuthContext'
+import { updateProfile } from '@/api/client'
+import { answersToOnboardPayload, profileToUserData } from '@/lib/profile'
 import { cn } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
 
@@ -32,14 +35,26 @@ const PURPOSES = [
 
 export default function SettingsPage({ onBack }: { onBack?: () => void }) {
   const { user, setUser, resetUser } = useUser()
+  const { signOut, enabled: authEnabled } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleLogout = useCallback(async () => {
+    resetUser()
+    if (authEnabled) {
+      try {
+        await signOut()
+      } catch (err) {
+        console.error('Sign-out failed', err)
+      }
+    }
+  }, [authEnabled, resetUser, signOut])
 
   const [name, setName] = useState(user.name)
   const [location, setLocation] = useState(user.location)
   const [profession, setProfession] = useState(user.profession)
   const [purpose, setPurpose] = useState(user.purpose)
   const [saved, setSaved] = useState(false)
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     return () => {
@@ -73,11 +88,27 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
     [setUser],
   )
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setUser({ name, location, profession, purpose })
     setSaved(true)
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
     savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
+
+    if (authEnabled) {
+      try {
+        const payload = answersToOnboardPayload({ name, location, profession, purpose })
+        const profile = await updateProfile({
+          name: payload.name,
+          role: payload.role,
+          jurisdiction: payload.jurisdiction,
+          use_case: payload.use_case,
+        })
+        // Reconcile from server response in case the backend normalised values.
+        setUser(profileToUserData(profile))
+      } catch (err) {
+        console.error('Failed to persist profile changes', err)
+      }
+    }
   }
 
   return (
@@ -240,10 +271,10 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
           <div className="mt-10 pt-6 border-t border-cream-200">
             <p className="text-xs font-medium text-cream-400 uppercase tracking-wider mb-3">Account</p>
             <p className="text-sm text-cream-400 mb-4">
-              Log out and return to the welcome screen. Your data will be cleared.
+              Log out and return to the login page. Your local data will be cleared.
             </p>
             <motion.button
-              onClick={resetUser}
+              onClick={handleLogout}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all duration-200"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

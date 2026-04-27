@@ -1,4 +1,4 @@
-import { useState, useEffect, Component, type ErrorInfo, type ReactNode } from 'react'
+import { useState, useEffect, useRef, Component, type ErrorInfo, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { UserProvider, useUser } from '@/context/UserContext'
@@ -6,6 +6,8 @@ import Welcome from '@/pages/Welcome'
 import Home from '@/pages/Home'
 import Login from '@/pages/Login'
 import { easeOutExpo } from '@/lib/motion'
+import { getProfile } from '@/api/client'
+import { profileToUserData } from '@/lib/profile'
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -46,9 +48,9 @@ function AppRouter() {
   const { user } = useUser()
   const [showApp, setShowApp] = useState(user.onboarded)
 
-  // React to logout: when user.onboarded becomes false, go back to splash
   useEffect(() => {
     if (!user.onboarded) setShowApp(false)
+    else setShowApp(true)
   }, [user.onboarded])
 
   const handleOnboardingComplete = () => {
@@ -82,11 +84,56 @@ function AppRouter() {
 }
 
 /**
- * Gate the whole app on Supabase authentication.
- * - If Supabase isn't configured (dev mode): skip auth, render app as before.
- * - If configured and user is signed in: render app.
- * - Otherwise: render the Login screen.
+ * Bridge supabase auth state into UserContext:
+ *  - On login: hydrate user.name from auth metadata if not already set.
+ *  - On logout: clear local user data so the next signup starts clean.
  */
+function AuthUserSync({ children }: { children: ReactNode }) {
+  const { user: authUser, enabled } = useAuth()
+  const { user, setUser, resetUser } = useUser()
+  const lastAuthIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!enabled) return
+    const prevId = lastAuthIdRef.current
+    const currId = authUser?.id ?? null
+
+    if (currId && currId !== prevId) {
+      // Seed the local cache with whatever the auth metadata gives us so the
+      // UI doesn't render an empty name while we wait for the server.
+      const metaName =
+        (authUser?.user_metadata?.name as string | undefined)?.trim() ||
+        authUser?.email?.split('@')[0] ||
+        ''
+      if (metaName && metaName !== user.name) {
+        setUser({ name: metaName })
+      }
+
+      // Fetch the canonical profile from the backend and hydrate UserContext.
+      // This is what makes the onboarding state survive across devices: the
+      // server is the source of truth, localStorage is only a cache.
+      void (async () => {
+        try {
+          const profile = await getProfile()
+          setUser(profileToUserData(profile))
+        } catch (err) {
+          // 401 here means the JWT is stale or auth misconfigured. Stay on
+          // the cached state so the user isn't kicked out mid-session.
+          console.warn('Profile hydration failed', err)
+        }
+      })()
+    }
+
+    if (!currId && prevId) {
+      resetUser()
+    }
+
+    lastAuthIdRef.current = currId
+  }, [authUser, enabled, user.name, setUser, resetUser])
+
+  return <>{children}</>
+}
+
 function AuthGate({ children }: { children: ReactNode }) {
   const { user, loading, enabled } = useAuth()
 
@@ -94,8 +141,8 @@ function AuthGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-surface flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-surface-400 border-t-suits-500 animate-spin" />
+      <div className="fixed inset-0 bg-cream flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-neutral-300 border-t-neutral-900 animate-spin" />
       </div>
     )
   }
@@ -111,7 +158,9 @@ export default function App() {
       <AuthProvider>
         <AuthGate>
           <UserProvider>
-            <AppRouter />
+            <AuthUserSync>
+              <AppRouter />
+            </AuthUserSync>
           </UserProvider>
         </AuthGate>
       </AuthProvider>

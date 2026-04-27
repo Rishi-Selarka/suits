@@ -231,7 +231,7 @@ export default function Sidebar({
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                {TOOL_ITEMS.map((item, idx) => (
+                {TOOL_ITEMS.map((item) => (
                   <div key={item.id}>
                     <button
                       onClick={() => onViewChange(item.id)}

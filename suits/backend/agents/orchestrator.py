@@ -84,6 +84,7 @@ class AgentOrchestrator:
         self,
         document_id: str,
         clauses: list[Any],
+        user_id: str,
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Run the full agent pipeline, yielding SSE-compatible event dicts.
 
@@ -93,6 +94,8 @@ class AgentOrchestrator:
             The document being analyzed.
         clauses : list
             Clauses extracted by the ingestion layer (list of Clause or dicts).
+        user_id : str
+            Authenticated owner of the document — used to scope storage reads/writes.
 
         Yields
         ------
@@ -103,7 +106,7 @@ class AgentOrchestrator:
         agent_timings: list[AgentTiming] = []
 
         # ── Cache check ──────────────────────────────────────────────────
-        cached = self.storage.get_result(document_id)
+        cached = await self.storage.get_result(user_id, document_id)
         if cached and cached.classifications:
             logger.info(
                 "Cache hit for document",
@@ -247,8 +250,8 @@ class AgentOrchestrator:
         )
 
         try:
-            self.storage.save_result(analysis)
-            self.storage.update_status(document_id, "complete")
+            await self.storage.save_result(user_id, analysis)
+            await self.storage.update_status(user_id, document_id, "complete")
         except Exception as exc:
             logger.error(
                 f"Failed to save analysis result: {exc}",
