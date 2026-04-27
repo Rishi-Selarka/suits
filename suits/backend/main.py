@@ -69,6 +69,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging(settings.log_level)
     logger.info("Starting Suits AI", extra={"status": "startup"})
 
+    # Fail closed if Supabase looks production-configured but the JWT secret
+    # is missing. Without this, the app would boot with auth.py decaying to
+    # the shared dev user id and every request mapping to one identity.
+    if settings.supabase_configured and not settings.auth_enabled:
+        raise RuntimeError(
+            "SUPABASE_URL is set but SUPABASE_JWT_SECRET is missing. "
+            "Set the JWT secret (Dashboard → Settings → API → JWT Settings) "
+            "or unset SUPABASE_URL to run in unauthenticated dev mode."
+        )
+
     # Shared state
     app.state.settings = settings
     app.state.storage = Storage(
@@ -1301,14 +1311,13 @@ async def verify_payment(
     payment = await db.complete_payment(
         payment_id=body.payment_id,
         razorpay_payment_id=body.razorpay_payment_id,
+        user_id=user_id,
     )
 
     if not payment:
+        # Either no such payment, or the payment belongs to another user.
+        # Return 404 in both cases — leak nothing about cross-user state.
         raise HTTPException(status_code=404, detail="Payment not found.")
-    if payment["user_id"] != user_id:
-        # The payment belongs to a different account — refuse to upgrade
-        # this caller's plan.
-        raise HTTPException(status_code=403, detail="Payment does not belong to caller.")
 
     profile = await db.get_profile(user_id)
     quota = await db.check_quota(user_id)
