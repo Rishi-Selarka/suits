@@ -97,29 +97,35 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.embedding_manager = None
     app.state.conversation_memory = None
 
-    async def _load_rag() -> None:
-        try:
-            from rag.embeddings import EmbeddingManager  # type: ignore[import-untyped]
-            from rag.conversation import ConversationMemory  # type: ignore[import-untyped]
+    if not settings.enable_rag:
+        logger.info(
+            "RAG disabled via ENABLE_RAG=false — skipping embedding model load",
+            extra={"status": "rag_disabled"},
+        )
+    else:
+        async def _load_rag() -> None:
+            try:
+                from rag.embeddings import EmbeddingManager  # type: ignore[import-untyped]
+                from rag.conversation import ConversationMemory  # type: ignore[import-untyped]
 
-            # Run heavy model loading in a thread so it doesn't block the event loop
-            emb = await asyncio.to_thread(EmbeddingManager)
-            app.state.embedding_manager = emb
-            app.state.conversation_memory = ConversationMemory()
-            logger.info("EmbeddingManager initialised", extra={"status": "rag_ready"})
-        except Exception:
-            logger.warning("EmbeddingManager not available — RAG chat disabled", extra={"status": "rag_skip"})
+                # Run heavy model loading in a thread so it doesn't block the event loop
+                emb = await asyncio.to_thread(EmbeddingManager)
+                app.state.embedding_manager = emb
+                app.state.conversation_memory = ConversationMemory()
+                logger.info("EmbeddingManager initialised", extra={"status": "rag_ready"})
+            except Exception:
+                logger.warning("EmbeddingManager not available — RAG chat disabled", extra={"status": "rag_skip"})
 
-    _rag_task = asyncio.create_task(_load_rag())
+        _rag_task = asyncio.create_task(_load_rag())
 
-    def _on_rag_done(t: asyncio.Task[None]) -> None:
-        if t.cancelled():
-            return
-        exc = t.exception()
-        if exc is not None:
-            logger.error(f"RAG background task failed: {exc}", extra={"status": "error"})
+        def _on_rag_done(t: asyncio.Task[None]) -> None:
+            if t.cancelled():
+                return
+            exc = t.exception()
+            if exc is not None:
+                logger.error(f"RAG background task failed: {exc}", extra={"status": "error"})
 
-    _rag_task.add_done_callback(_on_rag_done)
+        _rag_task.add_done_callback(_on_rag_done)
 
     yield
 
