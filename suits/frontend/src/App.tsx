@@ -92,6 +92,10 @@ function AuthUserSync({ children }: { children: ReactNode }) {
   const { user: authUser, enabled } = useAuth()
   const { user, setUser, resetUser } = useUser()
   const lastAuthIdRef = useRef<string | null>(null)
+  // Tracks the auth id whose hydration is in flight so a slow `/api/profile`
+  // response can't clobber state set by a faster-completing onboarding flow
+  // on the same login.
+  const hydrationForRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!enabled) return
@@ -112,10 +116,21 @@ function AuthUserSync({ children }: { children: ReactNode }) {
       // Fetch the canonical profile from the backend and hydrate UserContext.
       // This is what makes the onboarding state survive across devices: the
       // server is the source of truth, localStorage is only a cache.
+      hydrationForRef.current = currId
       void (async () => {
         try {
           const profile = await getProfile()
-          setUser(profileToUserData(profile))
+          // Stale-cancel: only apply this hydration if (a) the auth user
+          // hasn't switched again under us, and (b) the local state hasn't
+          // already been promoted to onboarded by an in-progress wizard.
+          // Without (b), a slow /api/profile that returns use_case='' can
+          // bounce a just-onboarded user back to Welcome.
+          if (hydrationForRef.current !== currId) return
+          const next = profileToUserData(profile)
+          setUser(prev => {
+            if (prev.onboarded && !next.onboarded) return prev
+            return { ...prev, ...next }
+          })
         } catch (err) {
           // 401 here means the JWT is stale or auth misconfigured. Stay on
           // the cached state so the user isn't kicked out mid-session.
@@ -125,6 +140,7 @@ function AuthUserSync({ children }: { children: ReactNode }) {
     }
 
     if (!currId && prevId) {
+      hydrationForRef.current = null
       resetUser()
     }
 
