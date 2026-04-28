@@ -69,15 +69,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging(settings.log_level)
     logger.info("Starting Suits AI", extra={"status": "startup"})
 
-    # Fail closed if Supabase looks production-configured but the JWT secret
-    # is missing. Without this, the app would boot with auth.py decaying to
-    # the shared dev user id and every request mapping to one identity.
-    if settings.supabase_configured and not settings.auth_enabled:
-        raise RuntimeError(
-            "SUPABASE_URL is set but SUPABASE_JWT_SECRET is missing. "
-            "Set the JWT secret (Dashboard → Settings → API → JWT Settings) "
-            "or unset SUPABASE_URL to run in unauthenticated dev mode."
-        )
+    # SUPABASE_URL alone now enables auth (JWKS verification covers the
+    # asymmetric-key case). The earlier "URL without JWT secret = boot fail"
+    # guardrail is therefore stale and removed; auth.py raises a clear
+    # 503 per-request if neither mode can verify the token.
 
     # Shared state
     app.state.settings = settings
