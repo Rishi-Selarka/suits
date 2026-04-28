@@ -124,8 +124,15 @@ class Settings(BaseSettings):
 
     @property
     def auth_enabled(self) -> bool:
-        """True when Supabase JWT verification should run on protected endpoints."""
-        return bool(self.supabase_jwt_secret)
+        """True when Supabase JWT verification should run on protected endpoints.
+
+        Auth is enabled if EITHER:
+          • SUPABASE_JWT_SECRET is set (legacy HS256 verification), OR
+          • SUPABASE_URL is set (asymmetric ES256/RS256 via JWKS).
+        Newer Supabase projects sign with asymmetric keys and don't require
+        the legacy secret at all.
+        """
+        return bool(self.supabase_jwt_secret or self.supabase_url)
 
     @property
     def supabase_configured(self) -> bool:
