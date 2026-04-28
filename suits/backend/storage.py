@@ -34,7 +34,13 @@ from models import AnalysisResult, DocumentMetadata
 logger = get_logger("storage")
 
 _VALID_DOC_ID = re.compile(r"^[a-f0-9]{1,64}$")
-_VALID_USER_ID = re.compile(r"^[a-zA-Z0-9._\-]{1,128}$")
+# Supabase auth.users.id is always a UUID. The all-zero UUID is the
+# DEV_USER_ID local-dev placeholder. Restricting to UUID-only stops `..`,
+# `.`, and other path-walking shapes from ever reaching `LocalStorage`'s
+# filesystem layout.
+_VALID_USER_ID = re.compile(
+    r"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+)
 
 
 def _validate_document_id(document_id: str) -> None:
@@ -43,9 +49,6 @@ def _validate_document_id(document_id: str) -> None:
 
 
 def _validate_user_id(user_id: str) -> None:
-    # Supabase user ids are uuids; the dev placeholder is the all-zero uuid.
-    # We accept any safe filesystem-friendly token to keep the local backend
-    # robust under test harnesses.
     if not _VALID_USER_ID.match(user_id):
         raise ValueError(f"Invalid user_id: {user_id!r}")
 
@@ -70,18 +73,27 @@ class SupabaseStorage:
     # ── Files ──────────────────────────────────────────────────────────
 
     async def save_upload(
-        self, user_id: str, document_id: str, filename: str, data: bytes
+        self,
+        user_id: str,
+        document_id: str,
+        filename: str,
+        data: bytes,
+        content_type: str | None = None,
     ) -> str:
         _validate_user_id(user_id)
         _validate_document_id(document_id)
         path = self._bucket_path(user_id, document_id, filename)
+        # Pass the real MIME through so signed-URL downloads / future public
+        # access serve PDFs as application/pdf rather than octet-stream.
+        file_options: dict[str, str] = {"upsert": "true"}
+        if content_type:
+            file_options["content-type"] = content_type
 
         def _run() -> None:
-            # `upsert=true` so a re-upload of the same path doesn't 409.
             self.client.storage.from_(self.bucket).upload(
                 path=path,
                 file=data,
-                file_options={"upsert": "true"},
+                file_options=file_options,
             )
         await asyncio.to_thread(_run)
         return path
@@ -111,13 +123,19 @@ class SupabaseStorage:
             return None
 
         # Write to a tempfile preserving the original extension so PyMuPDF can
-        # detect the format from the path.
+        # detect the format from the path. If the write itself fails (disk
+        # full, permission, …) we unlink the partial file before re-raising
+        # so /tmp doesn't accumulate orphans across retries.
         suffix = Path(meta.filename).suffix or ".bin"
         fd, tmp_path = tempfile.mkstemp(prefix=f"{document_id}_", suffix=suffix)
         try:
-            os.write(fd, data)
-        finally:
-            os.close(fd)
+            try:
+                os.write(fd, data)
+            finally:
+                os.close(fd)
+        except BaseException:
+            Path(tmp_path).unlink(missing_ok=True)
+            raise
         return Path(tmp_path)
 
     # ── Document metadata ─────────────────────────────────────────────
@@ -372,7 +390,12 @@ class LocalStorage:
     # ── Files ──────────────────────────────────────────────────────────
 
     async def save_upload(
-        self, user_id: str, document_id: str, filename: str, data: bytes
+        self,
+        user_id: str,
+        document_id: str,
+        filename: str,
+        data: bytes,
+        content_type: str | None = None,  # noqa: ARG002 — local fs has no MIME concept
     ) -> str:
         _validate_document_id(document_id)
         upload_dir = self._user_dir(user_id, "uploads")
@@ -547,9 +570,16 @@ class Storage:
     # ── Delegated methods ─────────────────────────────────────────────
 
     async def save_upload(
-        self, user_id: str, document_id: str, filename: str, data: bytes
+        self,
+        user_id: str,
+        document_id: str,
+        filename: str,
+        data: bytes,
+        content_type: str | None = None,
     ) -> str:
-        return await self.backend.save_upload(user_id, document_id, filename, data)
+        return await self.backend.save_upload(
+            user_id, document_id, filename, data, content_type=content_type
+        )
 
     async def get_upload_path(
         self, user_id: str, document_id: str

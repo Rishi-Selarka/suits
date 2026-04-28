@@ -250,7 +250,9 @@ async def upload_document(
     import re as _re
     safe_filename = _re.sub(r'[^a-zA-Z0-9._-]', '_', file.filename or "document")[:255]
 
-    storage_path = await storage.save_upload(user_id, document_id, safe_filename, data)
+    storage_path = await storage.save_upload(
+        user_id, document_id, safe_filename, data, content_type=content_type
+    )
 
     meta = DocumentMetadata(
         document_id=document_id,
@@ -1226,19 +1228,29 @@ async def onboard_user(
     request: Request,
     user_id: str = Depends(get_current_user_id),
 ) -> UserResponse:
-    """Persist the onboarding answers onto the authenticated user's profile."""
+    """Persist the onboarding answers onto the authenticated user's profile.
+
+    One round-trip via `upsert_profile` so a network blip can't leave the
+    user in a half-onboarded state (profile created with defaults, then the
+    follow-up update never landed).
+    """
     db = _db(request)
-    await db.get_or_create_profile(user_id, name=body.name)
-    profile = await db.update_profile(
-        user_id,
-        name=body.name,
-        role=body.role,
-        organization=body.organization,
-        use_case=body.use_case,
-        jurisdiction=body.jurisdiction,
-    )
-    if not profile:
-        raise HTTPException(status_code=500, detail="Failed to persist profile.")
+    try:
+        profile = await db.upsert_profile(
+            user_id,
+            name=body.name,
+            role=body.role,
+            organization=body.organization,
+            use_case=body.use_case,
+            jurisdiction=body.jurisdiction,
+        )
+    except Exception as exc:
+        logger.error(
+            f"Onboarding upsert failed for user_id={user_id}: {exc}",
+            extra={"status": "onboard_error"},
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail="Failed to persist profile.") from exc
     quota = await db.check_quota(user_id)
     return _serialise_profile(profile, quota)
 

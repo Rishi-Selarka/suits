@@ -49,23 +49,13 @@ PLAN_PRICES_PAISE: dict[str, int] = {
 }
 
 
-# ── Profile defaults ────────────────────────────────────────────────────────
-
-def _default_profile(user_id: str, name: str = "") -> dict[str, Any]:
-    now = time.time()
-    return {
-        "id": user_id,
-        "name": name or "",
-        "email": None,
-        "role": "individual",
-        "organization": "",
-        "use_case": "",
-        "jurisdiction": "India",
-        "plan": "free",
-        "documents_used": 0,
-        "created_at": now,
-        "updated_at": now,
-    }
+# ── Profile editable fields ────────────────────────────────────────────────
+# Single source of truth for which profile columns the user can change. Plan
+# and `documents_used` are intentionally absent — those move only via payment
+# verification and the usage RPC.
+_EDITABLE_PROFILE_FIELDS: frozenset[str] = frozenset(
+    {"name", "role", "organization", "use_case", "jurisdiction"}
+)
 
 
 # ── Supabase backend ────────────────────────────────────────────────────────
@@ -90,20 +80,27 @@ class SupabaseBackend:
         if existing:
             return existing
 
-        # The `on_auth_user_created` trigger normally creates this row, but if
-        # the user predates the trigger or it failed, upsert defensively.
+        # The `on_auth_user_created` trigger normally creates this row. We
+        # upsert defensively in case it didn't fire (older user, trigger
+        # disabled). If the upsert + read still returns nothing we raise —
+        # synthesising a fake row would silently desync from the DB.
         def _run() -> dict[str, Any]:
             payload = {"id": user_id, "name": name or "New User"}
             self.client.table("profiles").upsert(payload, on_conflict="id").execute()
             res = self.client.table("profiles").select("*").eq("id", user_id).limit(1).execute()
-            return (res.data or [_default_profile(user_id, name)])[0]
+            rows = res.data or []
+            if not rows:
+                raise RuntimeError(
+                    f"Profile upsert succeeded but row not found for user_id={user_id!r}"
+                )
+            return rows[0]
         return await asyncio.to_thread(_run)
 
     async def update_profile(self, user_id: str, **fields: Any) -> dict[str, Any] | None:
-        # Only profile fields editable by the user. plan/documents_used are
-        # mutated by payments / usage tracking, never by user input.
-        allowed = {"name", "role", "organization", "use_case", "jurisdiction"}
-        updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
+        updates = {
+            k: v for k, v in fields.items()
+            if k in _EDITABLE_PROFILE_FIELDS and v is not None
+        }
         if not updates:
             return await self.get_profile(user_id)
 
@@ -114,34 +111,54 @@ class SupabaseBackend:
             return rows[0] if rows else None
         return await asyncio.to_thread(_run)
 
+    async def upsert_profile(
+        self, user_id: str, name: str, **fields: Any
+    ) -> dict[str, Any]:
+        """Atomic onboarding write: create profile if missing AND set fields.
+
+        Replaces the two-call `get_or_create_profile` + `update_profile`
+        pattern at /api/onboard with a single `INSERT … ON CONFLICT DO
+        UPDATE`. If the network drops between calls, we never end up with a
+        half-onboarded profile.
+        """
+        payload: dict[str, Any] = {"id": user_id, "name": (name or "New User").strip()}
+        for k, v in fields.items():
+            if k in _EDITABLE_PROFILE_FIELDS and v is not None:
+                payload[k] = v
+
+        def _run() -> dict[str, Any]:
+            self.client.table("profiles").upsert(payload, on_conflict="id").execute()
+            res = self.client.table("profiles").select("*").eq("id", user_id).limit(1).execute()
+            rows = res.data or []
+            if not rows:
+                raise RuntimeError(
+                    f"Profile upsert succeeded but row not found for user_id={user_id!r}"
+                )
+            return rows[0]
+        return await asyncio.to_thread(_run)
+
     # ── Usage / quota ─────────────────────────────────────────────────
 
     async def record_usage(
         self, user_id: str, document_id: str, action: str = "analyze"
     ) -> None:
+        """Record an analysis event and atomically bump `documents_used`.
+
+        The increment is delegated to the `increment_documents_used` RPC
+        defined in `supabase_schema.sql` so it runs as a single UPDATE under
+        Postgres MVCC. The previous read-modify-write fallback was removed:
+        under concurrent analyses it could silently *decrement* the counter
+        if the SELECT raced an unrelated update. If the RPC is unavailable
+        we now raise, and the calling SSE handler in main.py logs and
+        carries on without corrupting quota.
+        """
         def _run() -> None:
             self.client.table("usage").insert({
                 "user_id": user_id,
                 "document_id": document_id,
                 "action": action,
             }).execute()
-            # Atomic increment via the SQL function defined in the schema.
-            try:
-                self.client.rpc("increment_documents_used", {"uid": user_id}).execute()
-            except Exception as exc:
-                # If the RPC isn't deployed for some reason, fall back to a
-                # read-modify-write — racy but safer than dropping the count.
-                logger.warning(
-                    f"increment_documents_used RPC failed, falling back: {exc}",
-                    extra={"status": "rpc_fallback"},
-                )
-                row = self.client.table("profiles").select("documents_used").eq(
-                    "id", user_id
-                ).limit(1).execute().data
-                used = (row[0]["documents_used"] if row else 0) + 1
-                self.client.table("profiles").update({"documents_used": used}).eq(
-                    "id", user_id
-                ).execute()
+            self.client.rpc("increment_documents_used", {"uid": user_id}).execute()
         await asyncio.to_thread(_run)
 
     async def get_usage(self, user_id: str) -> list[dict[str, Any]]:
@@ -298,6 +315,13 @@ class SqliteBackend:
         await self._db.execute("PRAGMA foreign_keys = ON")
         await self._db.execute("PRAGMA journal_mode = WAL")
         await self._db.executescript(_SQLITE_SCHEMA)
+        # Idempotent migration for older dev DBs created before `email` was
+        # added. SQLite has no `IF NOT EXISTS` for ADD COLUMN, so we attempt
+        # the alter and swallow the duplicate-column error.
+        try:
+            await self._db.execute("ALTER TABLE profiles ADD COLUMN email TEXT")
+        except Exception:
+            pass
         await self._db.commit()
 
     async def close(self) -> None:
@@ -333,13 +357,18 @@ class SqliteBackend:
         return await self.get_profile(user_id)  # type: ignore[return-value]
 
     async def update_profile(self, user_id: str, **fields: Any) -> dict[str, Any] | None:
-        allowed = {"name", "role", "organization", "use_case", "jurisdiction"}
-        updates = {k: v for k, v in fields.items() if k in allowed and v is not None}
+        updates = {
+            k: v for k, v in fields.items()
+            if k in _EDITABLE_PROFILE_FIELDS and v is not None
+        }
         if not updates:
             return await self.get_profile(user_id)
 
-        # Ensure the profile exists (in dev we may have fresh users)
-        await self.get_or_create_profile(user_id, name=updates.get("name", ""))
+        # Ensure the profile exists (in dev we may have fresh users). We do
+        # *not* feed the new name into get_or_create — that would clobber an
+        # already-set name with "New User" if the caller passed only role
+        # or jurisdiction.
+        await self.get_or_create_profile(user_id)
 
         updates["updated_at"] = time.time()
         set_clause = ", ".join(f"{k} = ?" for k in updates)
@@ -347,6 +376,19 @@ class SqliteBackend:
         await self.db.execute(f"UPDATE profiles SET {set_clause} WHERE id = ?", values)
         await self.db.commit()
         return await self.get_profile(user_id)
+
+    async def upsert_profile(
+        self, user_id: str, name: str, **fields: Any
+    ) -> dict[str, Any]:
+        """Single-shot create-or-update; SQLite mirror of SupabaseBackend's."""
+        await self.get_or_create_profile(user_id, name=name or "New User")
+        await self.update_profile(user_id, name=name, **fields)
+        profile = await self.get_profile(user_id)
+        if profile is None:
+            raise RuntimeError(
+                f"Profile upsert succeeded but row not found for user_id={user_id!r}"
+            )
+        return profile
 
     # ── Usage / quota ─────────────────────────────────────────────────
 
@@ -513,6 +555,11 @@ class Database:
         self, user_id: str, **fields: Any
     ) -> dict[str, Any] | None:
         return await self.backend.update_profile(user_id, **fields)
+
+    async def upsert_profile(
+        self, user_id: str, name: str, **fields: Any
+    ) -> dict[str, Any]:
+        return await self.backend.upsert_profile(user_id, name, **fields)
 
     async def record_usage(
         self, user_id: str, document_id: str, action: str = "analyze"
