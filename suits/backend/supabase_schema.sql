@@ -28,6 +28,7 @@
 create table if not exists public.profiles (
   id              uuid primary key references auth.users(id) on delete cascade,
   name            text not null default '',
+  email           text,
   role            text not null default 'individual'
                   check (role in ('individual','lawyer','business','student')),
   organization    text not null default '',
@@ -39,6 +40,10 @@ create table if not exists public.profiles (
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
+
+-- Idempotent: existing profile tables (created before email was added)
+-- pick up the new column on re-run.
+alter table public.profiles add column if not exists email text;
 
 
 -- ── 2. Documents ────────────────────────────────────────────────────────────
@@ -132,15 +137,47 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, name)
+  insert into public.profiles (id, name, email)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1), 'New User')
+    coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1), 'New User'),
+    new.email
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update
+    set email = excluded.email
+    where public.profiles.email is distinct from excluded.email;
   return new;
 end;
 $$;
+
+-- Keep email in sync if the user changes it via Supabase auth later.
+create or replace function public.sync_user_email()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.email is distinct from old.email then
+    update public.profiles set email = new.email where id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_email_changed on auth.users;
+create trigger on_auth_user_email_changed
+  after update of email on auth.users
+  for each row execute function public.sync_user_email();
+
+-- One-shot backfill of email for profiles that were created before the
+-- column existed. Idempotent: only fills NULLs.
+update public.profiles p
+   set email = u.email
+  from auth.users u
+ where p.id = u.id
+   and p.email is null
+   and u.email is not null;
 
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
