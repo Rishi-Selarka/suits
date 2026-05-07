@@ -1169,6 +1169,46 @@ async def list_scenario_templates(
     )
 
 
+@app.get("/api/scenarios/{document_id}/{scenario_id}/report")
+async def download_scenario_report(
+    document_id: str,
+    scenario_id: str,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> StreamingResponse:
+    """Render a stored scenario simulation as a polished PDF."""
+    storage = _storage(request)
+    generator: NegotiationBriefGenerator = request.app.state.report_generator
+
+    meta = await storage.get_metadata(user_id, document_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
+
+    scenarios = await storage.list_scenarios(user_id, document_id)
+    report = next((s for s in scenarios if s.scenario_id == scenario_id), None)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"Scenario {scenario_id} not found.")
+
+    try:
+        pdf_bytes = generator.generate_scenario(report=report, metadata=meta)
+    except Exception as exc:
+        logger.error(
+            f"Scenario PDF generation failed: {exc}",
+            extra={"status": "scenario_report_error"},
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail="Failed to generate scenario PDF.") from exc
+
+    safe_filename = meta.filename.rsplit(".", 1)[0] if "." in meta.filename else meta.filename
+    download_name = f"{safe_filename}_scenario_{scenario_id[:8]}.pdf"
+
+    return StreamingResponse(
+        content=iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{download_name}"'},
+    )
+
+
 @app.get("/api/scenarios/{document_id}", response_model=ScenarioListResponse)
 async def list_scenario_runs(
     document_id: str,
