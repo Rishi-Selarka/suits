@@ -17,10 +17,11 @@ Upload any legal document (rental agreement, employment contract, NDA, freelance
 - **Benchmark comparisons** — how your contract stacks up against fair-standard baselines
 - **Verdict** — SIGN / NEGOTIATE / WALK AWAY with reasoning
 - **Negotiation playbook** — priority-ordered issues with suggested counter-language
+- **Scenario simulator** — predictive what-if engine: ask "what if I terminate after 6 months?", "what if rent is paid 30 days late?" and the simulator traces the hypothetical through your actual clauses, returning a step-by-step timeline, financial impact in INR, dispute probability, mitigation steps split into BEFORE / DURING / AFTER, and Indian-law citations
 - **Document comparison** — diff two versions of a contract clause-by-clause
 - **Negotiation simulator** — two AI agents role-play a redline conversation
 - **Interactive chat** — ask questions about your document (multi-turn, RAG-grounded)
-- **Downloadable PDF** — professional negotiation brief to share with your lawyer
+- **Downloadable PDF** — professional negotiation brief, scenario simulation, or full bundle to share with your lawyer
 
 ---
 
@@ -44,7 +45,31 @@ Wave 3 (sequential)
 
 The Verifier implements a **generate → critique → refine** loop: it cross-checks every number, date, and clause reference against the source text before the report is finalized. The `BaseAgent` hallucination guard also independently audits each agent's output against the source clauses.
 
-Two additional agents power the negotiation simulator (`negotiator_agent1` + `negotiator_agent2`), and a RAG chat agent answers free-form questions grounded in the document.
+Two additional agents power the negotiation simulator (`negotiator_agent1` + `negotiator_agent2`), a RAG chat agent answers free-form questions grounded in the document, and the **Scenario Simulator** agent (`scenario_simulator`) traces user hypotheticals through the parsed clauses to predict outcomes — see [Scenario Simulator](#scenario-simulator) below.
+
+---
+
+## Scenario Simulator
+
+Static analysis tells you *what's in* the contract. The Scenario Simulator tells you *what will happen* under it.
+
+The user types a hypothetical — picked from a curated set of one-tap templates filtered to the detected document type, or a free-text question — and a single LLM agent traces it through the document's parsed clauses, the prior risk analysis, and the executive summary. The output is a structured `ScenarioReport`:
+
+| Field | What it is |
+|---|---|
+| `headline_outcome` | Plain-English answer (under 80 words) |
+| `outcome_severity` | FAVORABLE / NEUTRAL / UNFAVORABLE / CRITICAL |
+| `dispute_probability` | LOW / MEDIUM / HIGH with reasoning |
+| `estimated_financial_impact` | Range in INR + the calculation, referencing exact clause numbers |
+| `timeline` | Ordered steps (Day 0, Day 1-30, …) — each step lists the clause IDs that trigger and the consequence |
+| `triggered_clauses` | Each cited clause with the verbatim quote — the agent must use real quotes, not paraphrases |
+| `mitigation_steps` | Concrete actions split into BEFORE / DURING / AFTER, each with an urgency tag |
+| `legal_citations` | Indian statutes that change the outcome (Section 27, Section 73/74, Specific Relief Act, Rent Control Acts, …) |
+| `best_case` / `worst_case` / `user_leverage` | Outcome envelope and bargaining position |
+
+The agent inherits the same hallucination guard as every other agent in the pipeline: any reference to a non-existent `clause_id` is scrubbed from both the timeline and the triggered-clauses list before the report reaches the UI. Curated templates per document type live in `agents/scenario_templates.py` (rental, employment, NDA, service / SaaS, plus two generic fall-throughs always available). Each completed run is persisted (best-effort) and downloadable as a polished PDF.
+
+The frontend lives at `Sidebar → Tools → Scenario Simulator`.
 
 ---
 
@@ -196,6 +221,10 @@ The frontend reads its own `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` from `
 | `POST` | `/api/chat/{document_id}` | Document-grounded chat (RAG-backed, multi-turn). |
 | `POST` | `/api/chat/{document_id}/stream` | Streaming variant of document chat. |
 | `POST` | `/api/compare` | Diff two document versions clause-by-clause. |
+| `GET`  | `/api/scenarios/templates/{document_id}` | Curated what-if scenarios for the detected document type. |
+| `POST` | `/api/scenarios/simulate` | Run a what-if scenario grounded in the clauses (SSE-streamed). |
+| `GET`  | `/api/scenarios/{document_id}` | List past scenario runs for a document. |
+| `GET`  | `/api/scenarios/{document_id}/{scenario_id}/report` | Download a scenario simulation as a polished PDF. |
 | `GET`  | `/api/report/{document_id}` | Download negotiation brief as PDF. |
 | `GET`  | `/api/profile` | Authenticated user's profile. |
 | `PATCH`| `/api/profile` | Update profile fields. |

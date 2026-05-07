@@ -29,7 +29,7 @@ from typing import Any
 
 from config import get_settings
 from logging_config import get_logger
-from models import AnalysisResult, DocumentMetadata
+from models import AnalysisResult, DocumentMetadata, ScenarioReport
 
 logger = get_logger("storage")
 
@@ -358,6 +358,67 @@ class SupabaseStorage:
                     )
             await asyncio.to_thread(_run_storage)
 
+    # ── Scenario simulator ────────────────────────────────────────────
+
+    async def save_scenario(self, user_id: str, report: ScenarioReport) -> None:
+        """Persist a single scenario run.
+
+        The Supabase schema for `scenarios` may not exist on older deployments.
+        If the insert fails (table missing, RLS reject) we log and swallow —
+        the simulator is read-as-you-go; users don't lose the result they're
+        looking at, only the persisted history.
+        """
+        _validate_user_id(user_id)
+        _validate_document_id(report.document_id)
+        payload = {
+            "scenario_id": report.scenario_id,
+            "document_id": report.document_id,
+            "user_id": user_id,
+            "report": json.loads(report.model_dump_json()),
+        }
+
+        def _run() -> None:
+            self.client.table("scenarios").insert(payload).execute()
+        try:
+            await asyncio.to_thread(_run)
+        except Exception as exc:
+            logger.warning(
+                f"Scenario persistence skipped: {exc}",
+                extra={"status": "scenario_persist_skip"},
+            )
+
+    async def list_scenarios(
+        self, user_id: str, document_id: str
+    ) -> list[ScenarioReport]:
+        _validate_user_id(user_id)
+        _validate_document_id(document_id)
+
+        def _run() -> list[dict[str, Any]]:
+            res = (
+                self.client.table("scenarios")
+                .select("*")
+                .eq("user_id", user_id)
+                .eq("document_id", document_id)
+                .order("created_at", desc=True)
+                .execute()
+            )
+            return res.data or []
+        try:
+            rows = await asyncio.to_thread(_run)
+        except Exception as exc:
+            logger.warning(
+                f"Scenario list skipped: {exc}",
+                extra={"status": "scenario_list_skip"},
+            )
+            return []
+        out: list[ScenarioReport] = []
+        for row in rows:
+            try:
+                out.append(ScenarioReport.model_validate(row.get("report") or {}))
+            except Exception:
+                continue
+        return out
+
 
 # ── Local fallback ──────────────────────────────────────────────────────────
 
@@ -522,6 +583,49 @@ class LocalStorage:
             if f.name.startswith(document_id):
                 f.unlink(missing_ok=True)
 
+    # ── Scenario simulator ────────────────────────────────────────────
+
+    async def save_scenario(self, user_id: str, report: ScenarioReport) -> None:
+        _validate_document_id(report.document_id)
+        path = self._user_dir(user_id, "results") / f"{report.document_id}_scenarios.json"
+
+        def _read_then_write() -> None:
+            existing: list[dict[str, Any]] = []
+            if path.exists():
+                try:
+                    raw = json.loads(path.read_text())
+                    if isinstance(raw, list):
+                        existing = raw
+                except Exception:
+                    existing = []
+            # Newest first, capped at 50 to keep the file small.
+            existing.insert(0, json.loads(report.model_dump_json()))
+            existing = existing[:50]
+            _atomic_write_text(path, json.dumps(existing, indent=2))
+
+        await asyncio.to_thread(_read_then_write)
+
+    async def list_scenarios(
+        self, user_id: str, document_id: str
+    ) -> list[ScenarioReport]:
+        _validate_document_id(document_id)
+        path = self._user_dir(user_id, "results") / f"{document_id}_scenarios.json"
+        if not path.exists():
+            return []
+        try:
+            raw = json.loads(path.read_text())
+        except Exception:
+            return []
+        if not isinstance(raw, list):
+            return []
+        out: list[ScenarioReport] = []
+        for item in raw:
+            try:
+                out.append(ScenarioReport.model_validate(item))
+            except Exception:
+                continue
+        return out
+
 
 # ── Public Storage wrapper ─────────────────────────────────────────────────
 
@@ -635,3 +739,11 @@ class Storage:
 
     async def delete_document(self, user_id: str, document_id: str) -> None:
         await self.backend.delete_document(user_id, document_id)
+
+    async def save_scenario(self, user_id: str, report: ScenarioReport) -> None:
+        await self.backend.save_scenario(user_id, report)
+
+    async def list_scenarios(
+        self, user_id: str, document_id: str
+    ) -> list[ScenarioReport]:
+        return await self.backend.list_scenarios(user_id, document_id)

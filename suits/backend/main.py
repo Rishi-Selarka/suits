@@ -31,6 +31,10 @@ from models import (
     PaymentCreateRequest,
     PaymentVerifyRequest,
     QuotaResponse,
+    ScenarioListResponse,
+    ScenarioReport,
+    ScenarioSimulateRequest,
+    ScenarioTemplatesResponse,
     SSEEvent,
     UploadResponse,
     UserResponse,
@@ -1134,6 +1138,223 @@ async def compare_documents(
             ),
         },
     }
+
+
+# ── Scenario Simulator ─────────────────────────────────────────────────────
+
+@app.get("/api/scenarios/templates/{document_id}", response_model=ScenarioTemplatesResponse)
+async def list_scenario_templates(
+    document_id: str,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> ScenarioTemplatesResponse:
+    """Return what-if templates curated for the document's detected type."""
+    storage = _storage(request)
+
+    meta = await storage.get_metadata(user_id, document_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
+
+    result = await storage.get_result(user_id, document_id)
+    detected_type = ""
+    if result and result.advisory and result.advisory.document_summary:
+        detected_type = result.advisory.document_summary.document_type or ""
+
+    from agents.scenario_templates import templates_for_document_type
+
+    return ScenarioTemplatesResponse(
+        document_id=document_id,
+        detected_document_type=detected_type,
+        templates=templates_for_document_type(detected_type),
+    )
+
+
+@app.get("/api/scenarios/{document_id}/{scenario_id}/report")
+async def download_scenario_report(
+    document_id: str,
+    scenario_id: str,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> StreamingResponse:
+    """Render a stored scenario simulation as a polished PDF."""
+    storage = _storage(request)
+    generator: NegotiationBriefGenerator = request.app.state.report_generator
+
+    meta = await storage.get_metadata(user_id, document_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
+
+    scenarios = await storage.list_scenarios(user_id, document_id)
+    report = next((s for s in scenarios if s.scenario_id == scenario_id), None)
+    if not report:
+        raise HTTPException(status_code=404, detail=f"Scenario {scenario_id} not found.")
+
+    try:
+        pdf_bytes = generator.generate_scenario(report=report, metadata=meta)
+    except Exception as exc:
+        logger.error(
+            f"Scenario PDF generation failed: {exc}",
+            extra={"status": "scenario_report_error"},
+            exc_info=True,
+        )
+        raise HTTPException(status_code=500, detail="Failed to generate scenario PDF.") from exc
+
+    safe_filename = meta.filename.rsplit(".", 1)[0] if "." in meta.filename else meta.filename
+    download_name = f"{safe_filename}_scenario_{scenario_id[:8]}.pdf"
+
+    return StreamingResponse(
+        content=iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{download_name}"'},
+    )
+
+
+@app.get("/api/scenarios/{document_id}", response_model=ScenarioListResponse)
+async def list_scenario_runs(
+    document_id: str,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> ScenarioListResponse:
+    """Return the history of scenario simulations for a document."""
+    storage = _storage(request)
+
+    meta = await storage.get_metadata(user_id, document_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Document {document_id} not found.")
+
+    return ScenarioListResponse(
+        document_id=document_id,
+        scenarios=await storage.list_scenarios(user_id, document_id),
+    )
+
+
+@app.post("/api/scenarios/simulate")
+async def simulate_scenario(
+    body: ScenarioSimulateRequest,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> EventSourceResponse:
+    """Run a what-if simulation grounded in the document's parsed clauses.
+
+    SSE event types:
+      - {"type":"status","stage":"loading"|"reasoning"|"finalizing","message":...}
+      - {"type":"report","report": ScenarioReport}
+      - {"type":"error","message":...}
+    The single-shot LLM call (the simulator agent) drives the long pause —
+    we surface that to the UI as a `reasoning` stage update so users see life.
+    """
+    storage = _storage(request)
+    llm_client = _llm(request)
+    settings = _settings(request)
+
+    if not body.query.strip():
+        raise HTTPException(status_code=400, detail="Scenario query cannot be empty.")
+
+    meta = await storage.get_metadata(user_id, body.document_id)
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Document {body.document_id} not found.")
+
+    result = await storage.get_result(user_id, body.document_id)
+    if not result:
+        raise HTTPException(
+            status_code=400,
+            detail="Document has not been analysed yet. Run /api/analyze first.",
+        )
+
+    # Pull the canonical clauses (RAG-saved JSON if available, else from result).
+    clauses_raw = await storage.get_clauses(user_id, body.document_id)
+    if not clauses_raw:
+        clauses_raw = [c.model_dump() for c in result.clauses]
+    if not clauses_raw:
+        raise HTTPException(
+            status_code=400,
+            detail="No clauses available for this document — re-run analysis.",
+        )
+
+    document_type = ""
+    advisory_summary = ""
+    if result.advisory:
+        if result.advisory.document_summary:
+            document_type = result.advisory.document_summary.document_type or ""
+        advisory_summary = result.advisory.executive_summary or ""
+
+    risks_payload = [r.model_dump() for r in result.risks]
+
+    async def event_stream() -> AsyncGenerator[str, None]:
+        try:
+            yield json.dumps({
+                "type": "status",
+                "stage": "loading",
+                "message": "Loading clauses and prior risk analysis...",
+            })
+
+            from agents.scenario_simulator import ScenarioSimulatorAgent
+
+            agent = ScenarioSimulatorAgent(
+                llm_client=llm_client,
+                model_config=settings.agent_models.scenario_simulator,
+            )
+
+            yield json.dumps({
+                "type": "status",
+                "stage": "reasoning",
+                "message": (
+                    f"Tracing the scenario through {len(clauses_raw)} clauses..."
+                ),
+            })
+
+            run_result = await agent.run(
+                clauses=clauses_raw,
+                query=body.query.strip(),
+                risks=risks_payload,
+                advisory_summary=advisory_summary,
+                document_type=document_type,
+            )
+
+            data = run_result["data"]
+            yield json.dumps({
+                "type": "status",
+                "stage": "finalizing",
+                "message": "Composing outcome timeline...",
+            })
+
+            scenario_id = uuid.uuid4().hex
+            from datetime import datetime, timezone
+
+            report = ScenarioReport(
+                scenario_id=scenario_id,
+                document_id=body.document_id,
+                user_query=body.query.strip(),
+                template_id=body.template_id,
+                model_used=run_result.get("model_used", ""),
+                timing_ms=int(run_result.get("timing_ms", 0)),
+                created_at=datetime.now(timezone.utc).isoformat(),
+                **{k: v for k, v in data.items() if k in ScenarioReport.model_fields},
+            )
+
+            # Persist (best-effort; failure is logged inside storage).
+            try:
+                await storage.save_scenario(user_id, report)
+            except Exception as persist_exc:
+                logger.warning(
+                    f"Scenario save failed (non-fatal): {persist_exc}",
+                    extra={"status": "scenario_save_warn"},
+                )
+
+            yield json.dumps({
+                "type": "report",
+                "report": json.loads(report.model_dump_json()),
+            })
+
+        except Exception as exc:
+            logger.error(
+                f"Scenario simulation failed: {exc}",
+                extra={"status": "scenario_error"},
+                exc_info=True,
+            )
+            yield json.dumps({"type": "error", "message": str(exc)})
+
+    return EventSourceResponse(event_stream())
 
 
 # ── GET /api/health ──────────────────────────────────────────────────────────

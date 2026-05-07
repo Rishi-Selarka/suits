@@ -40,6 +40,12 @@ class AgentModelsConfig(BaseModel):
     negotiator_agent2: ModelConfig = ModelConfig(
         model_id="openai/gpt-4o-mini", temperature=0.7, max_tokens=2048
     )
+    scenario_simulator: ModelConfig = ModelConfig(
+        model_id="anthropic/claude-sonnet-4-5",
+        temperature=0.2,
+        max_tokens=4096,
+        fallback_model_id="openai/gpt-4o-mini",
+    )
 
 
 class Settings(BaseSettings):
