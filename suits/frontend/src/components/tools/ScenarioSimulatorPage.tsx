@@ -801,14 +801,14 @@ function ResultPanel({
   const fi = report.estimated_financial_impact
 
   const mitigationsByPhase = useMemo(() => {
-    const grouped: Record<'BEFORE' | 'DURING' | 'AFTER', typeof report.mitigation_steps> = {
+    const grouped: Record<'BEFORE' | 'DURING' | 'AFTER', ScenarioReport['mitigation_steps']> = {
       BEFORE: [], DURING: [], AFTER: [],
     }
     for (const m of report.mitigation_steps) {
       grouped[m.phase].push(m)
     }
     return grouped
-  }, [report.mitigation_steps])
+  }, [report])
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8">
