@@ -463,6 +463,171 @@ export interface NegotiateEvent {
   total_rounds?: number
 }
 
+// ── Scenario Simulator types & calls ─────────────────────────────────────
+
+export type ScenarioSeverity = 'FAVORABLE' | 'NEUTRAL' | 'UNFAVORABLE' | 'CRITICAL'
+export type DisputeProbability = 'LOW' | 'MEDIUM' | 'HIGH'
+export type FinancialPerspective = 'OUT_OF_POCKET' | 'RECOVERABLE' | 'MIXED' | 'NONE'
+export type MitigationPhase = 'BEFORE' | 'DURING' | 'AFTER'
+export type Urgency = 'LOW' | 'MEDIUM' | 'HIGH'
+
+export interface ScenarioFinancialImpact {
+  amount_range_inr: string
+  calculation_basis: string
+  user_perspective: FinancialPerspective
+}
+
+export interface ScenarioTimelineStep {
+  step: number
+  when: string
+  event: string
+  triggered_clause_ids: number[]
+  consequence: string
+}
+
+export interface ScenarioTriggeredClause {
+  clause_id: number
+  title: string
+  why_relevant: string
+  key_quote: string
+}
+
+export interface ScenarioMitigationStep {
+  phase: MitigationPhase
+  action: string
+  rationale: string
+  urgency: Urgency
+}
+
+export interface ScenarioLegalCitation {
+  law: string
+  section: string
+  relevance: string
+}
+
+export interface ScenarioReport {
+  scenario_id: string
+  document_id: string
+  user_query: string
+  template_id: string | null
+  scenario_summary: string
+  headline_outcome: string
+  outcome_severity: ScenarioSeverity
+  dispute_probability: DisputeProbability
+  dispute_probability_reasoning: string
+  estimated_financial_impact: ScenarioFinancialImpact
+  timeline: ScenarioTimelineStep[]
+  triggered_clauses: ScenarioTriggeredClause[]
+  mitigation_steps: ScenarioMitigationStep[]
+  legal_citations: ScenarioLegalCitation[]
+  best_case: string
+  worst_case: string
+  user_leverage: string
+  model_used: string
+  timing_ms: number
+  created_at: string
+}
+
+export interface ScenarioTemplate {
+  id: string
+  document_types: string[]
+  title: string
+  prompt: string
+  icon: string | null
+  severity_hint: ScenarioSeverity
+}
+
+export interface ScenarioTemplatesResponse {
+  document_id: string
+  detected_document_type: string
+  templates: ScenarioTemplate[]
+}
+
+export interface ScenarioListResponse {
+  document_id: string
+  scenarios: ScenarioReport[]
+}
+
+export type ScenarioStreamEvent =
+  | { type: 'status'; stage: 'loading' | 'reasoning' | 'finalizing'; message: string }
+  | { type: 'report'; report: ScenarioReport }
+  | { type: 'error'; message: string }
+
+export async function listScenarioTemplates(documentId: string): Promise<ScenarioTemplatesResponse> {
+  const { data } = await api.get<ScenarioTemplatesResponse>(`/scenarios/templates/${documentId}`)
+  return data
+}
+
+export async function listScenarioRuns(documentId: string): Promise<ScenarioListResponse> {
+  const { data } = await api.get<ScenarioListResponse>(`/scenarios/${documentId}`)
+  return data
+}
+
+export async function simulateScenarioStream(
+  documentId: string,
+  query: string,
+  templateId: string | null,
+  onEvent: (event: ScenarioStreamEvent) => void,
+  onError?: (error: string) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  try {
+    const response = await authedFetch(`${API_BASE}/scenarios/simulate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      body: JSON.stringify({
+        document_id: documentId,
+        query,
+        template_id: templateId,
+      }),
+      signal,
+    })
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: 'Simulation failed' }))
+      onError?.(err.detail || 'Simulation failed')
+      return
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader) { onError?.('No stream'); return }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed || !trimmed.startsWith('data:')) continue
+        const jsonStr = trimmed.slice(5).trim()
+        if (!jsonStr) continue
+        try {
+          const evt = JSON.parse(jsonStr) as ScenarioStreamEvent
+          if (evt.type === 'error') onError?.(evt.message)
+          else onEvent(evt)
+        } catch { /* skip */ }
+      }
+    }
+  } catch (err) {
+    onError?.(err instanceof Error ? err.message : 'Stream error')
+  }
+}
+
+export async function downloadScenarioReport(
+  documentId: string,
+  scenarioId: string,
+): Promise<Blob> {
+  const { data } = await api.get(`/scenarios/${documentId}/${scenarioId}/report`, {
+    responseType: 'blob',
+  })
+  return data
+}
+
 export async function negotiateStream(
   message: string,
   documentId: string | undefined,

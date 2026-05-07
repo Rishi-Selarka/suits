@@ -11,6 +11,7 @@ import DeadlineTrackerPage from '@/components/tools/DeadlineTrackerPage'
 import TimebombPage from '@/components/tools/TimebombPage'
 import TrapDetectorPage from '@/components/tools/TrapDetectorPage'
 import NegotiatorPage from '@/components/tools/NegotiatorPage'
+import ScenarioSimulatorPage from '@/components/tools/ScenarioSimulatorPage'
 import RunAllToolsPage from '@/components/tools/RunAllToolsPage'
 import DocumentsPage from '@/components/tools/DocumentsPage'
 import LibraryPage from '@/components/tools/LibraryPage'
@@ -20,10 +21,10 @@ import { useUser } from '@/context/UserContext'
 import { uploadDocument, getResults, type AnalysisResult } from '@/api/client'
 import { easeOutExpo } from '@/lib/motion'
 
-type AppView = 'chat' | 'uploading' | 'pipeline' | 'results' | 'settings' | 'run-all-tools' | 'risk-score' | 'simulator' | 'deadlines' | 'timebomb' | 'trap-detector' | 'negotiator' | 'documents' | 'library' | 'downloads'
+type AppView = 'chat' | 'uploading' | 'pipeline' | 'results' | 'settings' | 'run-all-tools' | 'risk-score' | 'simulator' | 'scenario-simulator' | 'deadlines' | 'timebomb' | 'trap-detector' | 'negotiator' | 'documents' | 'library' | 'downloads'
 
 // Tool views that should stay mounted once visited (to preserve state)
-const PERSISTENT_TOOL_VIEWS = ['run-all-tools', 'risk-score', 'simulator', 'deadlines', 'timebomb', 'trap-detector', 'negotiator'] as const
+const PERSISTENT_TOOL_VIEWS = ['run-all-tools', 'risk-score', 'simulator', 'scenario-simulator', 'deadlines', 'timebomb', 'trap-detector', 'negotiator'] as const
 
 export default function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -252,6 +253,11 @@ export default function AppLayout() {
         {mountedViews.has('negotiator') && (
           <div style={{ display: activeView === 'negotiator' ? undefined : 'none' }} className="h-full">
             <NegotiatorPage />
+          </div>
+        )}
+        {mountedViews.has('scenario-simulator') && (
+          <div style={{ display: activeView === 'scenario-simulator' ? undefined : 'none' }} className="h-full">
+            <ScenarioSimulatorPage />
           </div>
         )}
 

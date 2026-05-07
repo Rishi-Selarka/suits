@@ -20,6 +20,7 @@ from models import (
     CriticalIssue,
     DocumentMetadata,
     RiskResult,
+    ScenarioReport,
 )
 
 logger = get_logger("reports.negotiation_brief")
@@ -46,6 +47,27 @@ _EXPORT_TITLES: dict[str, str] = {
     "deadlines": "DEADLINE TRACKER",
     "timebombs": "TIMEBOMB CLAUSES",
     "trap_clauses": "TRAP CLAUSE DETECTOR",
+    "scenario_report": "SCENARIO SIMULATION",
+}
+
+# Scenario severity / urgency colour palette
+_SEVERITY_COLORS: dict[str, tuple[int, int, int]] = {
+    "FAVORABLE": (34, 197, 94),     # green
+    "NEUTRAL": (100, 116, 139),     # slate
+    "UNFAVORABLE": (234, 179, 8),   # amber
+    "CRITICAL": (220, 38, 38),      # red
+}
+
+_DISPUTE_COLORS: dict[str, tuple[int, int, int]] = {
+    "LOW": (34, 197, 94),
+    "MEDIUM": (234, 179, 8),
+    "HIGH": (220, 38, 38),
+}
+
+_URGENCY_COLORS: dict[str, tuple[int, int, int]] = {
+    "LOW": (100, 116, 139),
+    "MEDIUM": (234, 179, 8),
+    "HIGH": (220, 38, 38),
 }
 
 # ── Patterns for deadline extraction (mirrors frontend logic) ──────────────
@@ -207,6 +229,47 @@ class NegotiationBriefGenerator:
             "PDF report generated",
             extra={"agent": "reports", "status": "success"},
         )
+
+        return bytes(pdf.output())
+
+    # ── Scenario simulator export ───────────────────────────────────────
+
+    def generate_scenario(
+        self,
+        report: ScenarioReport,
+        metadata: DocumentMetadata,
+    ) -> bytes:
+        """Render a scenario simulation as its own polished PDF."""
+        title = _EXPORT_TITLES["scenario_report"]
+        doc_info = f"Document: {metadata.filename}  |  Scenario: {report.scenario_id[:8]}"
+        pdf = _LegalPDF(export_title=title, doc_info=doc_info)
+        pdf.alias_nb_pages()
+        pdf.add_page()
+
+        sections: list[tuple[str, callable]] = [  # type: ignore[type-arg]
+            ("query", lambda: self._scenario_section_query(pdf, report)),
+            ("outcome", lambda: self._scenario_section_outcome(pdf, report)),
+            ("financial", lambda: self._scenario_section_financial(pdf, report)),
+            ("timeline", lambda: self._scenario_section_timeline(pdf, report)),
+            ("triggered", lambda: self._scenario_section_triggered(pdf, report)),
+            ("mitigations", lambda: self._scenario_section_mitigations(pdf, report)),
+            ("citations", lambda: self._scenario_section_citations(pdf, report)),
+            ("envelope", lambda: self._scenario_section_envelope(pdf, report)),
+        ]
+
+        for section_name, render_fn in sections:
+            try:
+                render_fn()
+            except Exception as exc:
+                logger.warning(
+                    f"Scenario PDF section {section_name} failed: {exc}",
+                    extra={"agent": "reports", "status": "warning"},
+                )
+                pdf.set_x(pdf.l_margin)
+                pdf.set_font("Helvetica", "I", 9)
+                pdf.set_text_color(180, 0, 0)
+                pdf.multi_cell(0, 5, f"[Section '{section_name}' could not be rendered]")
+                pdf.ln(2)
 
         return bytes(pdf.output())
 
@@ -672,3 +735,189 @@ class NegotiationBriefGenerator:
                 self._body(pdf, risk.suggested_modification)
 
             pdf.ln(2)
+
+    # ── Scenario simulator sections ─────────────────────────────────────
+
+    def _scenario_pill(
+        self, pdf: _LegalPDF, label: str, value: str, color: tuple[int, int, int]
+    ) -> None:
+        r, g, b = color
+        pdf.set_fill_color(r, g, b)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.cell(40, 6, _safe(f" {label}: {value} "), fill=True)
+        pdf.set_text_color(50, 50, 50)
+
+    def _scenario_section_query(self, pdf: _LegalPDF, report: ScenarioReport) -> None:
+        self._heading(pdf, "Scenario")
+        pdf.set_font("Helvetica", "I", 10)
+        pdf.set_text_color(60, 60, 60)
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(0, 6, _safe(f'"{report.user_query}"'))
+        pdf.ln(2)
+        if report.scenario_summary:
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(80, 80, 80)
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(0, 5, _safe(f"Restated: {report.scenario_summary}"))
+            pdf.ln(2)
+
+    def _scenario_section_outcome(self, pdf: _LegalPDF, report: ScenarioReport) -> None:
+        self._heading(pdf, "Predicted Outcome")
+        # Severity + dispute pills, side by side
+        pdf.set_x(pdf.l_margin)
+        self._scenario_pill(
+            pdf, "Severity", report.outcome_severity,
+            _SEVERITY_COLORS.get(report.outcome_severity, (100, 100, 100)),
+        )
+        pdf.cell(4, 6, "")  # spacer
+        self._scenario_pill(
+            pdf, "Dispute Risk", report.dispute_probability,
+            _DISPUTE_COLORS.get(report.dispute_probability, (100, 100, 100)),
+        )
+        pdf.ln(10)
+
+        if report.headline_outcome:
+            self._body(pdf, report.headline_outcome)
+        if report.dispute_probability_reasoning:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(80, 80, 80)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(0, 5, "Why this dispute risk:", new_x="LMARGIN", new_y="NEXT")
+            self._body(pdf, report.dispute_probability_reasoning)
+
+    def _scenario_section_financial(self, pdf: _LegalPDF, report: ScenarioReport) -> None:
+        fi = report.estimated_financial_impact
+        if not fi or (
+            not fi.amount_range_inr and not fi.calculation_basis
+        ):
+            return
+        self._heading(pdf, "Estimated Financial Impact")
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_text_color(30, 30, 30)
+        pdf.set_x(pdf.l_margin)
+        pdf.cell(0, 8, _safe(fi.amount_range_inr), new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_text_color(120, 120, 120)
+        pdf.cell(0, 5, _safe(f"User position: {fi.user_perspective}"), new_x="LMARGIN", new_y="NEXT")
+        if fi.calculation_basis:
+            pdf.ln(1)
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(80, 80, 80)
+            pdf.cell(0, 5, "Calculation basis:", new_x="LMARGIN", new_y="NEXT")
+            self._body(pdf, fi.calculation_basis)
+
+    def _scenario_section_timeline(self, pdf: _LegalPDF, report: ScenarioReport) -> None:
+        if not report.timeline:
+            return
+        self._heading(pdf, "Outcome Timeline")
+        for step in report.timeline:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(30, 30, 30)
+            pdf.set_x(pdf.l_margin)
+            triggers = (
+                f"  (clauses {', '.join(f'C{i}' for i in step.triggered_clause_ids)})"
+                if step.triggered_clause_ids else ""
+            )
+            pdf.cell(0, 6, _safe(f"Step {step.step}: {step.when}{triggers}"),
+                     new_x="LMARGIN", new_y="NEXT")
+            if step.event:
+                self._body(pdf, step.event)
+            if step.consequence:
+                pdf.set_font("Helvetica", "I", 9)
+                pdf.set_text_color(120, 60, 60)
+                pdf.set_x(pdf.l_margin)
+                pdf.multi_cell(0, 5, _safe(f"-> {step.consequence}"))
+                pdf.set_text_color(50, 50, 50)
+            pdf.ln(2)
+
+    def _scenario_section_triggered(self, pdf: _LegalPDF, report: ScenarioReport) -> None:
+        if not report.triggered_clauses:
+            return
+        self._heading(pdf, "Triggered Clauses")
+        for tc in report.triggered_clauses:
+            self._heading(pdf, f"C{tc.clause_id} - {tc.title or 'Untitled clause'}", level=3)
+            if tc.why_relevant:
+                self._body(pdf, tc.why_relevant)
+            if tc.key_quote:
+                pdf.set_font("Helvetica", "I", 9)
+                pdf.set_text_color(80, 80, 80)
+                pdf.set_x(pdf.l_margin)
+                pdf.multi_cell(0, 5, _safe(f'"{tc.key_quote}"'))
+                pdf.set_text_color(50, 50, 50)
+            pdf.ln(1)
+
+    def _scenario_section_mitigations(self, pdf: _LegalPDF, report: ScenarioReport) -> None:
+        if not report.mitigation_steps:
+            return
+        self._heading(pdf, "Mitigation Steps")
+
+        # Group by phase so the user reads them in chronological order.
+        by_phase: dict[str, list] = {"BEFORE": [], "DURING": [], "AFTER": []}
+        for m in report.mitigation_steps:
+            by_phase.setdefault(m.phase, []).append(m)
+
+        phase_titles = {
+            "BEFORE": "Before the scenario unfolds",
+            "DURING": "While it's happening",
+            "AFTER": "After the fact",
+        }
+        for phase in ("BEFORE", "DURING", "AFTER"):
+            steps = by_phase.get(phase) or []
+            if not steps:
+                continue
+            self._heading(pdf, phase_titles[phase], level=3)
+            for m in steps:
+                pdf.set_x(pdf.l_margin)
+                self._scenario_pill(
+                    pdf, "Urgency", m.urgency,
+                    _URGENCY_COLORS.get(m.urgency, (100, 100, 100)),
+                )
+                pdf.ln(8)
+                pdf.set_font("Helvetica", "B", 9)
+                pdf.set_text_color(30, 30, 30)
+                pdf.set_x(pdf.l_margin)
+                pdf.multi_cell(0, 5, _safe(m.action))
+                if m.rationale:
+                    pdf.set_font("Helvetica", "", 8)
+                    pdf.set_text_color(110, 110, 110)
+                    pdf.set_x(pdf.l_margin)
+                    pdf.multi_cell(0, 4, _safe(m.rationale))
+                pdf.ln(2)
+
+    def _scenario_section_citations(self, pdf: _LegalPDF, report: ScenarioReport) -> None:
+        if not report.legal_citations:
+            return
+        self._heading(pdf, "Relevant Legal Citations")
+        for c in report.legal_citations:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(30, 30, 30)
+            pdf.set_x(pdf.l_margin)
+            label = c.law + (f" - {c.section}" if c.section else "")
+            pdf.cell(0, 5, _safe(label), new_x="LMARGIN", new_y="NEXT")
+            if c.relevance:
+                self._body(pdf, c.relevance)
+            pdf.ln(1)
+
+    def _scenario_section_envelope(self, pdf: _LegalPDF, report: ScenarioReport) -> None:
+        if not (report.best_case or report.worst_case or report.user_leverage):
+            return
+        self._heading(pdf, "Outcome Envelope")
+        if report.best_case:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(0, 130, 50)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(0, 5, "Best case:", new_x="LMARGIN", new_y="NEXT")
+            self._body(pdf, report.best_case)
+        if report.worst_case:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(180, 0, 0)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(0, 5, "Worst case:", new_x="LMARGIN", new_y="NEXT")
+            self._body(pdf, report.worst_case)
+        if report.user_leverage:
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(30, 30, 130)
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(0, 5, "Your leverage:", new_x="LMARGIN", new_y="NEXT")
+            self._body(pdf, report.user_leverage)

@@ -10,6 +10,7 @@ import {
   Timer,
   Eye,
   Swords,
+  FlaskConical,
   Layers,
   BookOpen,
   Download,
@@ -41,6 +42,7 @@ interface NavItem {
 
 const TOOL_ITEMS: NavItem[] = [
   { id: 'run-all-tools', label: 'Exclusive Audit', icon: Layers },
+  { id: 'scenario-simulator', label: 'Scenario Simulator', icon: FlaskConical },
   { id: 'risk-score', label: 'Risk Score', icon: Shield },
   { id: 'simulator', label: 'What Could Go Wrong', icon: AlertTriangle },
   { id: 'deadlines', label: 'Deadline Tracker', icon: Calendar },
