@@ -249,3 +249,101 @@ class PaymentVerifyRequest(BaseModel):
     payment_id: str
     razorpay_payment_id: str
     razorpay_signature: str = ""
+
+
+# ── Scenario Simulator (What-If Engine) ────────────────────────────────────
+
+ScenarioSeverity = Literal["FAVORABLE", "NEUTRAL", "UNFAVORABLE", "CRITICAL"]
+DisputeProbability = Literal["LOW", "MEDIUM", "HIGH"]
+FinancialPerspective = Literal["OUT_OF_POCKET", "RECOVERABLE", "MIXED", "NONE"]
+MitigationPhase = Literal["BEFORE", "DURING", "AFTER"]
+Urgency = Literal["LOW", "MEDIUM", "HIGH"]
+
+
+class ScenarioFinancialImpact(BaseModel):
+    amount_range_inr: str = "unclear from contract"
+    calculation_basis: str = ""
+    user_perspective: FinancialPerspective = "NONE"
+
+
+class ScenarioTimelineStep(BaseModel):
+    step: int = Field(ge=1)
+    when: str
+    event: str
+    triggered_clause_ids: list[int] = Field(default_factory=list)
+    consequence: str = ""
+
+
+class ScenarioTriggeredClause(BaseModel):
+    clause_id: int
+    title: str = ""
+    why_relevant: str = ""
+    key_quote: str = ""
+
+
+class ScenarioMitigationStep(BaseModel):
+    phase: MitigationPhase = "BEFORE"
+    action: str
+    rationale: str = ""
+    urgency: Urgency = "MEDIUM"
+
+
+class ScenarioLegalCitation(BaseModel):
+    law: str
+    section: str = ""
+    relevance: str = ""
+
+
+class ScenarioReport(BaseModel):
+    """The structured output of one scenario simulation run."""
+
+    scenario_id: str
+    document_id: str
+    user_query: str
+    template_id: str | None = None
+    scenario_summary: str = ""
+    headline_outcome: str = ""
+    outcome_severity: ScenarioSeverity = "NEUTRAL"
+    dispute_probability: DisputeProbability = "LOW"
+    dispute_probability_reasoning: str = ""
+    estimated_financial_impact: ScenarioFinancialImpact = Field(
+        default_factory=ScenarioFinancialImpact
+    )
+    timeline: list[ScenarioTimelineStep] = Field(default_factory=list)
+    triggered_clauses: list[ScenarioTriggeredClause] = Field(default_factory=list)
+    mitigation_steps: list[ScenarioMitigationStep] = Field(default_factory=list)
+    legal_citations: list[ScenarioLegalCitation] = Field(default_factory=list)
+    best_case: str = ""
+    worst_case: str = ""
+    user_leverage: str = ""
+    model_used: str = ""
+    timing_ms: int = 0
+    created_at: str = ""
+
+
+class ScenarioTemplate(BaseModel):
+    """A pre-built what-if scenario surfaced to the user as a one-tap prompt."""
+
+    id: str
+    document_types: list[str] = Field(default_factory=list)
+    title: str
+    prompt: str
+    icon: str | None = None
+    severity_hint: ScenarioSeverity = "NEUTRAL"
+
+
+class ScenarioSimulateRequest(BaseModel):
+    document_id: str
+    query: str = Field(min_length=4, max_length=2000)
+    template_id: str | None = None
+
+
+class ScenarioListResponse(BaseModel):
+    document_id: str
+    scenarios: list[ScenarioReport] = Field(default_factory=list)
+
+
+class ScenarioTemplatesResponse(BaseModel):
+    document_id: str
+    detected_document_type: str = ""
+    templates: list[ScenarioTemplate] = Field(default_factory=list)
