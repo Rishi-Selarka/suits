@@ -21,6 +21,9 @@ suits/data/
 *.swo
 .DS_Store
 
+# Claude Code (CLI config, project memory, skills) — kept local, not shipped
+.claude/
+
 # Logs
 *.log
 
