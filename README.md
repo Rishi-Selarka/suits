@@ -175,7 +175,7 @@ npm run dev:all
 
 Auth, persistent storage, and per-user quotas are gated behind Supabase. Without it, the backend runs in single-user dev mode and writes to the local filesystem.
 
-Full setup walk-through: [`suits/SETUP_SUPABASE.md`](./suits/SETUP_SUPABASE.md). It covers creating the project, applying `supabase_schema.sql`, configuring the `documents` storage bucket, enabling email + Google OAuth, and grabbing the four required keys.
+Full setup walk-through: [`docs/setup-supabase.md`](./docs/setup-supabase.md). It covers creating the project, applying `supabase_schema.sql`, configuring the `documents` storage bucket, enabling email + Google OAuth, and grabbing the four required keys.
 
 ### Environment Variables
 
