@@ -353,14 +353,18 @@ async def analyze_document(
                 _cleanup_tempfile(upload_path)
             ingest_ms = int((time.perf_counter() - ingest_start) * 1000)
 
-            # Update metadata (page_count + clause_count + status)
+            # Update metadata (page_count + clause_count + status) in a
+            # single targeted write. The previous get-then-save-the-whole-row
+            # path was a read-modify-write race: any field changed by a
+            # concurrent process between the get and save was silently
+            # overwritten by the stale snapshot.
             await storage.update_status(
-                user_id, document_id, "processing", clause_count=len(clauses)
+                user_id,
+                document_id,
+                "processing",
+                clause_count=len(clauses),
+                page_count=page_count,
             )
-            meta_updated = await storage.get_metadata(user_id, document_id)
-            if meta_updated:
-                meta_updated.page_count = page_count
-                await storage.save_metadata(user_id, meta_updated)
 
             # Save clauses for RAG
             await storage.save_clauses(
@@ -445,15 +449,23 @@ async def analyze_document(
 
 
 def _cleanup_tempfile(path) -> None:  # noqa: ANN001
-    """Delete `path` if it lives under the OS temp dir. No-op otherwise."""
+    """Delete `path` if it lives under the OS temp dir. No-op otherwise.
+
+    Uses ``Path.is_relative_to`` on the resolved paths rather than
+    membership-in-``parents``: on macOS ``tempfile.gettempdir()`` resolves
+    to ``/var/folders/...`` while ``mkstemp`` returns paths that resolve
+    through ``/private/var/folders/...``, so the older ``in p.parents``
+    check silently never matched and tempfiles accumulated forever.
+    """
     import tempfile as _tf
     from pathlib import Path as _P
 
     try:
         p = _P(path) if not isinstance(path, _P) else path
+        resolved = p.resolve()
         tmp_root = _P(_tf.gettempdir()).resolve()
-        if tmp_root in p.resolve().parents:
-            p.unlink(missing_ok=True)
+        if resolved.is_relative_to(tmp_root):
+            resolved.unlink(missing_ok=True)
     except Exception:
         pass
 

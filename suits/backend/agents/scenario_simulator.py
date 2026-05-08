@@ -127,9 +127,20 @@ class ScenarioSimulatorAgent(BaseAgent):
                 f"ScenarioSimulator expected a dict, got {type(data).__name__}"
             )
 
-        # Required string fields with defaults if missing
+        # Hard-required: the headline answer and the restatement.
+        # Without these the report is meaningless and we must not silently
+        # default them to "" — the previous setdefault() path let an LLM
+        # that returned {} pass validation.
+        for required_key in ("scenario_summary", "headline_outcome"):
+            value = data.get(required_key)
+            if not isinstance(value, str) or not value.strip():
+                raise AgentValidationError(
+                    f"ScenarioSimulator: missing or empty required field "
+                    f"'{required_key}'"
+                )
+
+        # Soft-required: present in schema but tolerable if blank.
         for key in (
-            "scenario_summary", "headline_outcome",
             "dispute_probability_reasoning",
             "best_case", "worst_case", "user_leverage",
         ):
@@ -137,9 +148,20 @@ class ScenarioSimulatorAgent(BaseAgent):
             if not isinstance(data[key], str):
                 data[key] = str(data[key])
 
-        # Severity / probability enums — coerce or default
-        sev = str(data.get("outcome_severity", "NEUTRAL")).upper().strip()
-        data["outcome_severity"] = sev if sev in VALID_SEVERITY else "NEUTRAL"
+        # Severity must be explicit — silently coercing to NEUTRAL on a
+        # missing field hid bad LLM output. Coerce only if the value is
+        # a string variant of a valid enum member.
+        if "outcome_severity" not in data:
+            raise AgentValidationError(
+                "ScenarioSimulator: missing required field 'outcome_severity'"
+            )
+        sev = str(data.get("outcome_severity", "")).upper().strip()
+        if sev not in VALID_SEVERITY:
+            raise AgentValidationError(
+                f"ScenarioSimulator: invalid outcome_severity {sev!r}; "
+                f"expected one of {sorted(VALID_SEVERITY)}"
+            )
+        data["outcome_severity"] = sev
 
         prob = str(data.get("dispute_probability", "LOW")).upper().strip()
         data["dispute_probability"] = prob if prob in VALID_DISPUTE else "LOW"
