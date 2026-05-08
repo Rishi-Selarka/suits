@@ -36,6 +36,54 @@ class AgentExecutionError(Exception):
     """Raised when the agent run fails for any other reason."""
 
 
+def _extract_balanced_json(text: str) -> str | None:
+    """Return the outermost balanced JSON object/array in ``text``, or None.
+
+    The earlier regex fallback (``r"(\\[[\\s\\S]*?\\]|\\{[\\s\\S]*?\\})"``)
+    was non-greedy and tried ``[`` first, so prose followed by an object
+    containing an array would yield the inner array — wrong type, fed
+    silently to ``validate_response``. This scanner counts nesting depth
+    while honouring string quoting so a brace inside ``"a {b}"`` doesn't
+    pop the stack early.
+    """
+    n = len(text)
+    # Find the first opener — `{` or `[` — whichever comes first.
+    start = -1
+    opener = ""
+    for i, ch in enumerate(text):
+        if ch == "{" or ch == "[":
+            start = i
+            opener = ch
+            break
+    if start == -1:
+        return None
+    closer = "}" if opener == "{" else "]"
+
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, n):
+        ch = text[i]
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+            continue
+        if ch == opener:
+            depth += 1
+        elif ch == closer:
+            depth -= 1
+            if depth == 0:
+                return text[start: i + 1]
+    return None
+
+
 # ── Base Agent ───────────────────────────────────────────────────────────────
 
 
@@ -164,7 +212,12 @@ class BaseAgent(ABC):
         1. Strip leading/trailing whitespace.
         2. Strip markdown code fences (```json ... ``` or ``` ... ```).
         3. Try ``json.loads`` directly.
-        4. Regex fallback: extract the first JSON array or object.
+        4. Brace-counting fallback: scan for the LARGEST balanced JSON
+           document starting from the first `{` or `[`. This matters
+           because a non-greedy regex will return the first nested array
+           when the outer payload is an object that contains arrays —
+           e.g. ``Sure, here:\n{"foo": [1,2]}`` would parse to ``[1,2]``
+           and silently feed the wrong type to ``validate_response``.
         """
         cleaned = text.strip()
 
@@ -182,11 +235,15 @@ class BaseAgent(ABC):
         except json.JSONDecodeError:
             pass
 
-        # Regex fallback: find the first complete JSON array or object (non-greedy)
-        match = re.search(r"(\[[\s\S]*?\]|\{[\s\S]*?\})", cleaned)
-        if match:
+        # Balanced-document fallback. Walks the first `{` or `[`, counts
+        # nesting depth (string-aware so braces inside strings don't
+        # confuse it), and returns the substring up to the matching
+        # closer. Whichever opener appears first wins — that's the
+        # outermost JSON value.
+        extracted = _extract_balanced_json(cleaned)
+        if extracted is not None:
             try:
-                return json.loads(match.group(1))
+                return json.loads(extracted)
             except json.JSONDecodeError:
                 pass
 
