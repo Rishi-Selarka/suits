@@ -39,13 +39,29 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleLogout = useCallback(async () => {
-    resetUser()
     if (authEnabled) {
+      // Don't proactively resetUser() here. Doing it before the auth
+      // round-trip flipped user.onboarded=false while AuthGate still saw
+      // the user as authed, so AppRouter briefly rendered the Welcome
+      // (onboarding) flow before AuthGate swapped to <Login />. That was
+      // the "preview of the onboarding screens" the logout button showed.
+      //
+      // Letting signOut() drive everything: when the Supabase listener
+      // clears the session, AuthGate returns <Login /> and the entire
+      // UserProvider subtree unmounts in the same render — so a stale
+      // onboarded=false state never paints. Cross-account localStorage
+      // carryover is handled by UserProvider's OWNER_KEY check on the
+      // next mount, so nothing leaks between accounts.
       try {
         await signOut()
       } catch (err) {
         console.error('Sign-out failed', err)
       }
+    } else {
+      // Dev mode (no Supabase): there's no auth flow that will swap to
+      // <Login />, so clearing the local cache is the only way to get
+      // the user back to the onboarding entry point.
+      resetUser()
     }
   }, [authEnabled, resetUser, signOut])
 
