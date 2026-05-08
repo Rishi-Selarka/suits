@@ -13,8 +13,18 @@ from logging_config import get_logger
 
 logger = get_logger("ingestion.pdf_parser")
 
-# Minimum word count threshold -- below this we assume scanned/image PDF
-_MIN_WORDS_FOR_TEXT_PDF = 50
+# Word-count gates for the text-layer-then-OCR fallback chain.
+#
+# _OCR_TRIGGER_WORDS: at or below this we assume the PDF is a scan and
+#   try OCR. Above it we trust the text layer outright.
+# _OCR_REPLACE_WORDS: even if OCR ran, we only let it OVERRIDE the text
+#   layer when the text layer was effectively empty. The earlier behaviour
+#   (replace if OCR returns more words) was wrong for short but real-text
+#   PDFs (signature pages, one-clause amendments, sparse-layout cover
+#   pages): a clean 30-word text layer was being clobbered by a 60-word
+#   noisier OCR pass and feeding worse input into the segmenter.
+_OCR_TRIGGER_WORDS = 50
+_OCR_REPLACE_WORDS = 10
 
 
 def parse_pdf(file_path: str) -> tuple[str, int]:
@@ -51,14 +61,33 @@ def parse_pdf(file_path: str) -> tuple[str, int]:
     text, page_count, table_count = _extract_with_pymupdf(file_path)
 
     word_count = len(text.split())
-    if word_count < _MIN_WORDS_FOR_TEXT_PDF:
+    if word_count < _OCR_TRIGGER_WORDS:
         logger.info(
             f"Low text extraction ({word_count} words) -- attempting OCR fallback",
             extra={"status": "ocr_fallback"},
         )
         ocr_text = _extract_with_ocr(file_path)
-        if ocr_text and len(ocr_text.split()) > word_count:
+        ocr_word_count = len(ocr_text.split()) if ocr_text else 0
+        # Only replace the text layer when the text layer is effectively
+        # empty AND OCR found meaningfully more content.
+        if (
+            ocr_text
+            and word_count <= _OCR_REPLACE_WORDS
+            and ocr_word_count > word_count
+        ):
+            logger.info(
+                f"Replacing text layer ({word_count} words) with OCR output "
+                f"({ocr_word_count} words)",
+                extra={"status": "ocr_replace"},
+            )
             text = ocr_text
+        elif ocr_text and ocr_word_count > word_count:
+            logger.info(
+                f"Keeping text layer ({word_count} words); OCR returned "
+                f"{ocr_word_count} but the text layer is preferred above "
+                f"the {_OCR_REPLACE_WORDS}-word floor",
+                extra={"status": "ocr_skip"},
+            )
 
     if not text.strip():
         logger.warning(

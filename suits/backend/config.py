@@ -155,6 +155,21 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def _check_cors_with_credentials(self) -> "Settings":
+        # CORSMiddleware uses allow_credentials=True, which browsers
+        # refuse to combine with Access-Control-Allow-Origin: *. Even if
+        # the browser silently rejects the response, the server-side
+        # config is misleading and a common production-misconfiguration
+        # footgun. Refuse it explicitly when auth is on.
+        if "*" in self.cors_origins and self.auth_enabled:
+            raise ValueError(
+                "CORS_ORIGINS cannot include '*' when auth is enabled "
+                "(allow_credentials=True is incompatible with a wildcard "
+                "origin). List explicit origins instead."
+            )
+        return self
+
 
 from functools import lru_cache
 
