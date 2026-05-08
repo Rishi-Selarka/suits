@@ -221,12 +221,15 @@ class SupabaseStorage:
         document_id: str,
         status: str,
         clause_count: int | None = None,
+        page_count: int | None = None,
     ) -> None:
         _validate_user_id(user_id)
         _validate_document_id(document_id)
         updates: dict[str, Any] = {"status": status}
         if clause_count is not None:
             updates["clause_count"] = clause_count
+        if page_count is not None:
+            updates["page_count"] = page_count
 
         def _run() -> None:
             self.client.table("documents").update(updates).eq(
@@ -441,6 +444,22 @@ class LocalStorage:
         (self.root / "uploads").mkdir(parents=True, exist_ok=True)
         (self.root / "metadata").mkdir(parents=True, exist_ok=True)
         (self.root / "results").mkdir(parents=True, exist_ok=True)
+        # Per-document locks to serialize read-modify-write paths
+        # (currently: scenario history). Without these, two concurrent
+        # simulations for the same document_id both read the on-disk
+        # list, each insert their own report, and the second writer's
+        # atomic rename clobbers the first — losing one scenario.
+        self._scenario_locks: dict[tuple[str, str], asyncio.Lock] = {}
+        self._scenario_locks_guard = asyncio.Lock()
+
+    async def _scenario_lock(self, user_id: str, document_id: str) -> asyncio.Lock:
+        key = (user_id, document_id)
+        async with self._scenario_locks_guard:
+            lock = self._scenario_locks.get(key)
+            if lock is None:
+                lock = asyncio.Lock()
+                self._scenario_locks[key] = lock
+            return lock
 
     def _user_dir(self, user_id: str, kind: str) -> Path:
         _validate_user_id(user_id)
@@ -472,10 +491,29 @@ class LocalStorage:
     ) -> Path | None:
         _validate_document_id(document_id)
         upload_dir = self._user_dir(user_id, "uploads")
-        for f in upload_dir.iterdir():
-            if f.name.startswith(document_id):
-                return f
-        return None
+        # Match the strict <document_id>_<filename> layout produced by
+        # save_upload. Plain `startswith(document_id)` is too loose: a
+        # leftover orphan whose name happens to share the hex prefix
+        # would silently take precedence over the real upload, feeding
+        # the wrong PDF into the ingestor. Iteration order is also not
+        # guaranteed, so we additionally insist on at most one match.
+        prefix = f"{document_id}_"
+        matches = [f for f in upload_dir.iterdir() if f.name.startswith(prefix)]
+        if not matches:
+            # Backwards-compat: previously some files were stored with
+            # exactly the document_id and no underscore. Fall back to
+            # that single shape only.
+            for f in upload_dir.iterdir():
+                if f.name == document_id:
+                    return f
+            return None
+        if len(matches) > 1:
+            logger.warning(
+                f"Multiple upload files match {document_id!r}; using the newest",
+                extra={"status": "upload_path_ambiguous"},
+            )
+            matches.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        return matches[0]
 
     # ── Metadata ──────────────────────────────────────────────────────
 
@@ -515,6 +553,7 @@ class LocalStorage:
         document_id: str,
         status: str,
         clause_count: int | None = None,
+        page_count: int | None = None,
     ) -> None:
         meta = await self.get_metadata(user_id, document_id)
         if not meta:
@@ -522,6 +561,8 @@ class LocalStorage:
         meta.status = status  # type: ignore[assignment]
         if clause_count is not None:
             meta.clause_count = clause_count
+        if page_count is not None:
+            meta.page_count = page_count
         await self.save_metadata(user_id, meta)
 
     # ── Results ──────────────────────────────────────────────────────
@@ -603,7 +644,12 @@ class LocalStorage:
             existing = existing[:50]
             _atomic_write_text(path, json.dumps(existing, indent=2))
 
-        await asyncio.to_thread(_read_then_write)
+        # Serialize concurrent saves on the same document so we don't
+        # lose-update. The atomic rename protects against torn writes;
+        # the lock protects the read-modify-write window.
+        lock = await self._scenario_lock(user_id, report.document_id)
+        async with lock:
+            await asyncio.to_thread(_read_then_write)
 
     async def list_scenarios(
         self, user_id: str, document_id: str
@@ -711,8 +757,13 @@ class Storage:
         document_id: str,
         status: str,
         clause_count: int | None = None,
+        page_count: int | None = None,
     ) -> None:
-        await self.backend.update_status(user_id, document_id, status, clause_count=clause_count)
+        await self.backend.update_status(
+            user_id, document_id, status,
+            clause_count=clause_count,
+            page_count=page_count,
+        )
 
     async def save_result(
         self, user_id: str, result: AnalysisResult
