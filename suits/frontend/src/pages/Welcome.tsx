@@ -11,7 +11,6 @@ export default function Welcome({ onComplete }: WelcomeProps) {
   const { user, setUser } = useUser()
 
   const handleOnboardingComplete = async (data: {
-    location: string
     profession: string
     purpose: string
   }) => {

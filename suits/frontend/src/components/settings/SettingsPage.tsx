@@ -1,21 +1,12 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Camera, Check, MapPin, Briefcase, Target, User, LogOut, ArrowLeft } from 'lucide-react'
+import { Camera, Check, Briefcase, Target, User, LogOut, ArrowLeft } from 'lucide-react'
 import { useUser } from '@/context/UserContext'
 import { useAuth } from '@/context/AuthContext'
 import { updateProfile } from '@/api/client'
 import { answersToOnboardPayload, profileToUserData } from '@/lib/profile'
 import { cn } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
-
-const LOCATIONS = [
-  { id: 'india', label: 'India', emoji: '🇮🇳' },
-  { id: 'usa', label: 'United States', emoji: '🇺🇸' },
-  { id: 'uk', label: 'United Kingdom', emoji: '🇬🇧' },
-  { id: 'canada', label: 'Canada', emoji: '🇨🇦' },
-  { id: 'uae', label: 'UAE', emoji: '🇦🇪' },
-  { id: 'singapore', label: 'Singapore', emoji: '🇸🇬' },
-]
 
 const PROFESSIONS = [
   { id: 'lawyer', label: 'Lawyer' },
@@ -66,7 +57,6 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
   }, [authEnabled, resetUser, signOut])
 
   const [name, setName] = useState(user.name)
-  const [location, setLocation] = useState(user.location)
   const [profession, setProfession] = useState(user.profession)
   const [purpose, setPurpose] = useState(user.purpose)
   const [saved, setSaved] = useState(false)
@@ -80,7 +70,6 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
 
   const hasChanges =
     name !== user.name ||
-    location !== user.location ||
     profession !== user.profession ||
     purpose !== user.purpose
 
@@ -105,14 +94,14 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
   )
 
   const handleSave = async () => {
-    setUser({ name, location, profession, purpose })
+    setUser({ name, profession, purpose })
     setSaved(true)
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
     savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
 
     if (authEnabled) {
       try {
-        const payload = answersToOnboardPayload({ name, location, profession, purpose })
+        const payload = answersToOnboardPayload({ name, profession, purpose })
         const profile = await updateProfile({
           name: payload.name,
           role: payload.role,
@@ -199,22 +188,6 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
               placeholder="Your name"
               className="w-full px-4 py-2.5 rounded-xl border border-cream-300 bg-cream-100 text-surface-200 text-sm focus:outline-none focus:border-suits-500 focus:ring-1 focus:ring-suits-500/20 transition-all placeholder:text-cream-400"
             />
-          </Section>
-
-          {/* ── Location ── */}
-          <Section icon={MapPin} title="Location">
-            <div className="grid grid-cols-3 gap-2">
-              {LOCATIONS.map(loc => (
-                <OptionButton
-                  key={loc.id}
-                  selected={location === loc.id}
-                  onClick={() => setLocation(loc.id)}
-                >
-                  <span>{loc.emoji}</span>
-                  <span className="text-sm">{loc.label}</span>
-                </OptionButton>
-              ))}
-            </div>
           </Section>
 
           {/* ── Profession ── */}

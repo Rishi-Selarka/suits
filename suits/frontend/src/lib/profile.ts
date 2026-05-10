@@ -1,22 +1,10 @@
 import type { UserData } from '@/context/UserContext'
 import type { ProfileResponse } from '@/api/client'
 
-// Maps between the frontend onboarding vocabulary (location/profession/purpose)
-// and the backend Supabase profile schema (jurisdiction/role/use_case). Keep
-// these in sync with the choices rendered in OnboardingFlow / SettingsPage.
-
-const LOCATION_TO_JURISDICTION: Record<string, string> = {
-  india: 'India',
-  usa: 'United States',
-  uk: 'United Kingdom',
-  canada: 'Canada',
-  uae: 'UAE',
-  singapore: 'Singapore',
-}
-
-const JURISDICTION_TO_LOCATION: Record<string, string> = Object.fromEntries(
-  Object.entries(LOCATION_TO_JURISDICTION).map(([k, v]) => [v, k]),
-)
+// Maps between the frontend onboarding vocabulary (profession/purpose) and the
+// backend Supabase profile schema (role/use_case). Jurisdiction is fixed to
+// India — the product is India-only for now, so the country selection has
+// been removed from onboarding and settings.
 
 type Role = ProfileResponse['role']
 
@@ -37,7 +25,6 @@ const ROLE_TO_PROFESSION: Record<Role, string> = {
 
 export interface OnboardingAnswers {
   name: string
-  location: string
   profession: string
   purpose: string
 }
@@ -48,14 +35,13 @@ export function answersToOnboardPayload(answers: OnboardingAnswers) {
     role: PROFESSION_TO_ROLE[answers.profession] ?? 'individual',
     organization: '',
     use_case: answers.purpose || '',
-    jurisdiction: LOCATION_TO_JURISDICTION[answers.location] ?? answers.location ?? 'India',
+    jurisdiction: 'India',
   }
 }
 
 export function profileToUserData(profile: ProfileResponse): Partial<UserData> {
   return {
     name: profile.name || '',
-    location: JURISDICTION_TO_LOCATION[profile.jurisdiction] ?? profile.jurisdiction.toLowerCase(),
     profession: ROLE_TO_PROFESSION[profile.role] ?? 'freelancer',
     purpose: profile.use_case || '',
     // The backend schema has no "onboarded" flag; we infer it from `use_case`

@@ -3,7 +3,6 @@ import { useAuth } from '@/context/AuthContext'
 
 export interface UserData {
   name: string
-  location: string
   profession: string
   purpose: string
   onboarded: boolean
@@ -66,7 +65,6 @@ const OWNER_KEY = 'suits-owner'
 
 const defaultUser: UserData = {
   name: '',
-  location: '',
   profession: '',
   purpose: '',
   onboarded: false,

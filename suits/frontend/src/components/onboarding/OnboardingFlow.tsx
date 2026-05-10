@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, ArrowLeft, MapPin, Briefcase, Target } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Briefcase, Target } from 'lucide-react'
 import {
   Scale,
   Building2,
@@ -18,17 +18,8 @@ import { easeOutExpo } from '@/lib/motion'
 
 interface OnboardingFlowProps {
   userName: string
-  onComplete: (data: { location: string; profession: string; purpose: string }) => void
+  onComplete: (data: { profession: string; purpose: string }) => void
 }
-
-const LOCATIONS = [
-  { id: 'india', label: 'India', emoji: '🇮🇳' },
-  { id: 'usa', label: 'United States', emoji: '🇺🇸' },
-  { id: 'uk', label: 'United Kingdom', emoji: '🇬🇧' },
-  { id: 'canada', label: 'Canada', emoji: '🇨🇦' },
-  { id: 'uae', label: 'UAE', emoji: '🇦🇪' },
-  { id: 'singapore', label: 'Singapore', emoji: '🇸🇬' },
-]
 
 const PROFESSIONS = [
   { id: 'lawyer', label: 'Lawyer', sublabel: 'Legal Professional', icon: Scale },
@@ -50,20 +41,12 @@ interface StepConfig {
   key: string
   title: string
   subtitle: string
-  icon: typeof MapPin
-  options: typeof LOCATIONS | typeof PROFESSIONS | typeof PURPOSES
+  icon: typeof Briefcase
+  options: typeof PROFESSIONS | typeof PURPOSES
   columns: number
 }
 
 const STEPS: StepConfig[] = [
-  {
-    key: 'location',
-    title: 'Where are you based?',
-    subtitle: 'This helps us tailor jurisdiction-specific insights.',
-    icon: MapPin,
-    options: LOCATIONS,
-    columns: 3,
-  },
   {
     key: 'profession',
     title: "What's your profession?",
@@ -101,7 +84,6 @@ export default function OnboardingFlow({ userName, onComplete }: OnboardingFlowP
   const [stepIndex, setStepIndex] = useState(0)
   const [direction, setDirection] = useState(1)
   const [selections, setSelections] = useState<Record<string, string>>({
-    location: '',
     profession: '',
     purpose: '',
   })
@@ -121,7 +103,6 @@ export default function OnboardingFlow({ userName, onComplete }: OnboardingFlowP
       setExiting(true)
       setTimeout(() => {
         onComplete({
-          location: selections.location,
           profession: selections.profession,
           purpose: selections.purpose,
         })
