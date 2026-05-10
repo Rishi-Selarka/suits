@@ -31,6 +31,10 @@ class DocumentMetadata(BaseModel):
     # bucket path (`<user_id>/<doc_id>_<filename>`). For the local fallback
     # this is the absolute path on disk. Empty for unsaved metadata.
     storage_path: str = ""
+    # ISO-8601 timestamp of when the upload row was first created. Populated
+    # by both backends (Supabase reads `created_at`, local reads file mtime).
+    # Empty for newly-built metadata that hasn't been written yet.
+    uploaded_at: str = ""
 
 
 # ── Agent outputs ────────────────────────────────────────────────────────────
@@ -347,3 +351,35 @@ class ScenarioTemplatesResponse(BaseModel):
     document_id: str
     detected_document_type: str = ""
     templates: list[ScenarioTemplate] = Field(default_factory=list)
+
+
+# ── Documents listing ─────────────────────────────────────────────────────
+
+class DocumentListItem(BaseModel):
+    """Public list-shape returned by GET /api/documents — strips internal fields."""
+
+    document_id: str
+    filename: str
+    page_count: int = 0
+    clause_count: int = 0
+    status: Literal["uploaded", "processing", "complete", "error"] = "uploaded"
+    analyzed: bool = False
+    uploaded_at: str = ""
+
+
+# ── Download history ──────────────────────────────────────────────────────
+
+class DownloadHistoryItem(BaseModel):
+    id: str
+    document_id: str
+    filename: str = ""
+    export_type: str
+    export_label: str = ""
+    created_at: str = ""
+
+
+class DownloadCreate(BaseModel):
+    document_id: str
+    filename: str = ""
+    export_type: str = Field(min_length=1, max_length=64)
+    export_label: str = ""

@@ -126,6 +126,24 @@ create index if not exists payments_user_id_idx
   on public.payments (user_id, created_at desc);
 
 
+-- ── 6b. Download history ────────────────────────────────────────────────────
+-- Replaces the `suits-downloads` localStorage key. Backend records a row each
+-- time a user downloads a generated report (PDF brief, scenario simulation,
+-- timebombs, etc.) so the Downloads page is the same on every device.
+create table if not exists public.download_history (
+  id           uuid primary key default gen_random_uuid(),
+  user_id      uuid not null references auth.users(id) on delete cascade,
+  document_id  text not null,
+  filename     text not null default '',
+  export_type  text not null,
+  export_label text not null default '',
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists download_history_user_created_idx
+  on public.download_history (user_id, created_at desc);
+
+
 -- ── 7. Auto-create profile on signup ────────────────────────────────────────
 -- When a new auth.users row is inserted (signup), mirror a profiles row.
 -- `raw_user_meta_data` is populated from the `options.data` object passed to
@@ -239,6 +257,7 @@ alter table public.analysis_results  enable row level security;
 alter table public.document_clauses  enable row level security;
 alter table public.usage             enable row level security;
 alter table public.payments          enable row level security;
+alter table public.download_history  enable row level security;
 
 
 -- Profiles: user can read and update their own profile only.
@@ -282,6 +301,13 @@ create policy "usage_select_own" on public.usage
 -- Payments: user can read their own; writes happen from the backend.
 drop policy if exists "payments_select_own" on public.payments;
 create policy "payments_select_own" on public.payments
+  for select using (user_id = auth.uid());
+
+
+-- Download history: user can read their own; inserts come from the backend
+-- using the service_role key, so no INSERT policy is required.
+drop policy if exists "download_history_select_own" on public.download_history;
+create policy "download_history_select_own" on public.download_history
   for select using (user_id = auth.uid());
 
 

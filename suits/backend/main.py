@@ -25,7 +25,10 @@ from models import (
     ChatRequest,
     ChatResponse,
     CompareRequest,
+    DocumentListItem,
     DocumentMetadata,
+    DownloadCreate,
+    DownloadHistoryItem,
     NegotiateRequest,
     OnboardingRequest,
     PaymentCreateRequest,
@@ -1367,6 +1370,68 @@ async def simulate_scenario(
             yield json.dumps({"type": "error", "message": str(exc)})
 
     return EventSourceResponse(event_stream())
+
+
+# ── GET /api/documents ─────────────────────────────────────────────────────
+
+@app.get("/api/documents", response_model=list[DocumentListItem])
+async def list_user_documents(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> list[DocumentListItem]:
+    """List the authenticated user's uploaded documents.
+
+    Replaces the frontend's localStorage `suits-documents` cache. The
+    canonical list lives in the `documents` table (or local metadata dir
+    in dev mode); this endpoint just shapes it for the UI.
+    """
+    storage = _storage(request)
+    metas = await storage.list_documents(user_id)
+    return [
+        DocumentListItem(
+            document_id=m.document_id,
+            filename=m.filename,
+            page_count=m.page_count,
+            clause_count=m.clause_count,
+            status=m.status,
+            analyzed=m.status == "complete",
+            uploaded_at=m.uploaded_at,
+        )
+        for m in metas
+    ]
+
+
+# ── Downloads ──────────────────────────────────────────────────────────────
+
+@app.get("/api/downloads", response_model=list[DownloadHistoryItem])
+async def list_user_downloads(
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> list[DownloadHistoryItem]:
+    """Return the user's download history (newest first, capped at 200)."""
+    storage = _storage(request)
+    return await storage.list_downloads(user_id)
+
+
+@app.post("/api/downloads", response_model=DownloadHistoryItem, status_code=201)
+async def record_user_download(
+    body: DownloadCreate,
+    request: Request,
+    user_id: str = Depends(get_current_user_id),
+) -> DownloadHistoryItem:
+    """Record a generated-report download against the caller.
+
+    Called by the frontend after a successful `GET /api/report/...` (or
+    scenario report) so the user's Downloads page can rebuild on any
+    device. Best-effort: if persistence fails the call still 200s — but
+    Supabase RLS errors will surface as a 500 since they indicate a
+    misconfigured deployment, not an expected failure mode.
+    """
+    storage = _storage(request)
+    saved = await storage.record_download(user_id, body)
+    if not saved:
+        raise HTTPException(status_code=500, detail="Failed to record download.")
+    return saved
 
 
 # ── GET /api/health ──────────────────────────────────────────────────────────

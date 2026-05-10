@@ -29,7 +29,13 @@ from typing import Any
 
 from config import get_settings
 from logging_config import get_logger
-from models import AnalysisResult, DocumentMetadata, ScenarioReport
+from models import (
+    AnalysisResult,
+    DocumentMetadata,
+    DownloadCreate,
+    DownloadHistoryItem,
+    ScenarioReport,
+)
 
 logger = get_logger("storage")
 
@@ -152,6 +158,7 @@ class SupabaseStorage:
             content_type=row.get("content_type") or "",
             status=row.get("status") or "uploaded",
             storage_path=row.get("storage_path") or "",
+            uploaded_at=str(row.get("created_at") or ""),
         )
 
     async def save_metadata(
@@ -422,6 +429,82 @@ class SupabaseStorage:
                 continue
         return out
 
+    # ── Download history ──────────────────────────────────────────────
+
+    async def record_download(
+        self, user_id: str, payload: DownloadCreate
+    ) -> DownloadHistoryItem | None:
+        _validate_user_id(user_id)
+        _validate_document_id(payload.document_id)
+        row = {
+            "user_id": user_id,
+            "document_id": payload.document_id,
+            "filename": payload.filename,
+            "export_type": payload.export_type,
+            "export_label": payload.export_label,
+        }
+
+        def _run() -> dict[str, Any] | None:
+            res = self.client.table("download_history").insert(row).execute()
+            data = res.data or []
+            return data[0] if data else None
+
+        try:
+            inserted = await asyncio.to_thread(_run)
+        except Exception as exc:
+            logger.warning(
+                f"Download persistence skipped: {exc}",
+                extra={"status": "download_persist_skip"},
+            )
+            return None
+        if not inserted:
+            return None
+        return DownloadHistoryItem(
+            id=str(inserted.get("id", "")),
+            document_id=str(inserted.get("document_id", payload.document_id)),
+            filename=str(inserted.get("filename", payload.filename)),
+            export_type=str(inserted.get("export_type", payload.export_type)),
+            export_label=str(inserted.get("export_label", payload.export_label)),
+            created_at=str(inserted.get("created_at", "")),
+        )
+
+    async def list_downloads(self, user_id: str) -> list[DownloadHistoryItem]:
+        _validate_user_id(user_id)
+
+        def _run() -> list[dict[str, Any]]:
+            res = (
+                self.client.table("download_history")
+                .select("*")
+                .eq("user_id", user_id)
+                .order("created_at", desc=True)
+                .limit(200)
+                .execute()
+            )
+            return res.data or []
+
+        try:
+            rows = await asyncio.to_thread(_run)
+        except Exception as exc:
+            logger.warning(
+                f"Download list skipped: {exc}",
+                extra={"status": "download_list_skip"},
+            )
+            return []
+        out: list[DownloadHistoryItem] = []
+        for row in rows:
+            try:
+                out.append(DownloadHistoryItem(
+                    id=str(row.get("id", "")),
+                    document_id=str(row.get("document_id", "")),
+                    filename=str(row.get("filename") or ""),
+                    export_type=str(row.get("export_type") or ""),
+                    export_label=str(row.get("export_label") or ""),
+                    created_at=str(row.get("created_at") or ""),
+                ))
+            except Exception:
+                continue
+        return out
+
 
 # ── Local fallback ──────────────────────────────────────────────────────────
 
@@ -531,7 +614,16 @@ class LocalStorage:
         path = self._user_dir(user_id, "metadata") / f"{document_id}.json"
         if not path.exists():
             return None
-        return DocumentMetadata.model_validate_json(path.read_text())
+        meta = DocumentMetadata.model_validate_json(path.read_text())
+        if not meta.uploaded_at:
+            # Backfill from the file mtime when older metadata files don't
+            # carry the timestamp yet. Stored as ISO so the API surface is
+            # the same as the Supabase backend.
+            from datetime import datetime, timezone
+            meta.uploaded_at = datetime.fromtimestamp(
+                path.stat().st_mtime, tz=timezone.utc,
+            ).isoformat()
+        return meta
 
     async def find_by_hash(
         self, user_id: str, sha256: str
@@ -606,12 +698,26 @@ class LocalStorage:
     async def list_documents(self, user_id: str) -> list[DocumentMetadata]:
         meta_dir = self._user_dir(user_id, "metadata")
         docs: list[DocumentMetadata] = []
+        from datetime import datetime, timezone
         for f in meta_dir.glob("*.json"):
             try:
-                docs.append(DocumentMetadata.model_validate_json(f.read_text()))
+                meta = DocumentMetadata.model_validate_json(f.read_text())
             except Exception:
                 continue
-        return sorted(docs, key=lambda d: d.document_id, reverse=True)
+            if not meta.uploaded_at:
+                try:
+                    meta.uploaded_at = datetime.fromtimestamp(
+                        f.stat().st_mtime, tz=timezone.utc,
+                    ).isoformat()
+                except Exception:
+                    pass
+            docs.append(meta)
+        # Sort newest first by uploaded_at; falls back to document_id.
+        docs.sort(
+            key=lambda d: (d.uploaded_at or "", d.document_id),
+            reverse=True,
+        )
+        return docs
 
     async def delete_document(self, user_id: str, document_id: str) -> None:
         _validate_document_id(document_id)
@@ -668,6 +774,63 @@ class LocalStorage:
         for item in raw:
             try:
                 out.append(ScenarioReport.model_validate(item))
+            except Exception:
+                continue
+        return out
+
+    # ── Download history (single user_id JSONL-ish file) ──────────────
+
+    def _downloads_path(self, user_id: str) -> Path:
+        return self._user_dir(user_id, "results") / "_downloads.json"
+
+    async def record_download(
+        self, user_id: str, payload: DownloadCreate
+    ) -> DownloadHistoryItem | None:
+        _validate_document_id(payload.document_id)
+        from datetime import datetime, timezone
+        import uuid as _uuid
+
+        item = DownloadHistoryItem(
+            id=_uuid.uuid4().hex,
+            document_id=payload.document_id,
+            filename=payload.filename,
+            export_type=payload.export_type,
+            export_label=payload.export_label,
+            created_at=datetime.now(timezone.utc).isoformat(),
+        )
+        path = self._downloads_path(user_id)
+
+        def _read_then_write() -> None:
+            existing: list[dict[str, Any]] = []
+            if path.exists():
+                try:
+                    raw = json.loads(path.read_text())
+                    if isinstance(raw, list):
+                        existing = raw
+                except Exception:
+                    existing = []
+            # Newest first, capped at 200.
+            existing.insert(0, json.loads(item.model_dump_json()))
+            existing = existing[:200]
+            _atomic_write_text(path, json.dumps(existing, indent=2))
+
+        await asyncio.to_thread(_read_then_write)
+        return item
+
+    async def list_downloads(self, user_id: str) -> list[DownloadHistoryItem]:
+        path = self._downloads_path(user_id)
+        if not path.exists():
+            return []
+        try:
+            raw = json.loads(path.read_text())
+        except Exception:
+            return []
+        if not isinstance(raw, list):
+            return []
+        out: list[DownloadHistoryItem] = []
+        for d in raw:
+            try:
+                out.append(DownloadHistoryItem.model_validate(d))
             except Exception:
                 continue
         return out
@@ -798,3 +961,11 @@ class Storage:
         self, user_id: str, document_id: str
     ) -> list[ScenarioReport]:
         return await self.backend.list_scenarios(user_id, document_id)
+
+    async def record_download(
+        self, user_id: str, payload: DownloadCreate
+    ) -> DownloadHistoryItem | None:
+        return await self.backend.record_download(user_id, payload)
+
+    async def list_downloads(self, user_id: str) -> list[DownloadHistoryItem]:
+        return await self.backend.list_downloads(user_id)
