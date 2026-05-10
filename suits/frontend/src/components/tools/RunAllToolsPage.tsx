@@ -23,13 +23,13 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
-import { useUser } from '@/context/UserContext'
 import {
   uploadDocument,
   analyzeDocumentSSE,
   getResults,
   chatWithDocumentStream,
   downloadReport,
+  recordDownload,
   type AnalysisResult,
   type SSEEvent,
   type ChatResponse,
@@ -94,7 +94,6 @@ export default function RunAllToolsPage({ preloadResult, preloadFilename }: RunA
   const [currentAgent, setCurrentAgent] = useState('')
   const [activeTab, setActiveTab] = useState<string>('risk-score')
   const [downloading, setDownloading] = useState(false)
-  const { addDownload } = useUser()
 
   // Chat state
   const [chatOpen, setChatOpen] = useState(false)
@@ -263,18 +262,18 @@ export default function RunAllToolsPage({ preloadResult, preloadFilename }: RunA
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      addDownload({
-        id: crypto.randomUUID(),
-        documentId,
-        filename: filename || 'document',
-        exportType: 'full_bundle',
-        exportLabel: 'Full Analysis Bundle',
-        downloadedAt: Date.now(),
-      })
+      try {
+        await recordDownload({
+          document_id: documentId,
+          filename: filename || 'document',
+          export_type: 'full_bundle',
+          export_label: 'Full Analysis Bundle',
+        })
+      } catch { /* download already succeeded for the user */ }
     } catch { /* silent */ } finally {
       setDownloading(false)
     }
-  }, [documentId, downloading, filename, addDownload])
+  }, [documentId, downloading, filename])
 
   // ── Chat ──
   const flushChatTokens = useCallback(() => {

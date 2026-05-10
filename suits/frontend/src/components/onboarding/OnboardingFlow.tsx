@@ -185,9 +185,8 @@ export default function OnboardingFlow({ userName, onComplete }: OnboardingFlowP
                 <SelectCard
                   key={option.id}
                   label={option.label}
-                  sublabel={'sublabel' in option ? option.sublabel : undefined}
-                  icon={'icon' in option ? option.icon : undefined}
-                  emoji={'emoji' in option ? option.emoji : undefined}
+                  sublabel={option.sublabel}
+                  icon={option.icon}
                   selected={selections[step.key] === option.id}
                   onClick={() => handleSelect(option.id)}
                   index={i}

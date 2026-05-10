@@ -19,13 +19,13 @@ import {
 } from 'lucide-react'
 import { cn, validateUploadFile } from '@/lib/utils'
 import { easeOutExpo, staggerContainer, staggerItem } from '@/lib/motion'
-import { useUser } from '@/context/UserContext'
 import {
   analyzeDocumentSSE,
   downloadScenarioReport,
   getResults,
   listScenarioRuns,
   listScenarioTemplates,
+  recordDownload,
   simulateScenarioStream,
   uploadDocument,
   type AnalysisResult,
@@ -94,7 +94,6 @@ const PHASE_LABELS = {
 // ── Component ──────────────────────────────────────────────────────────────
 
 export default function ScenarioSimulatorPage() {
-  const { addDownload } = useUser()
 
   const [phase, setPhase] = useState<Phase>('empty')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -318,20 +317,20 @@ export default function ScenarioSimulatorPage() {
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      addDownload({
-        id: crypto.randomUUID(),
-        documentId,
-        filename: filename || 'document',
-        exportType: 'scenario_report',
-        exportLabel: 'Scenario Simulation',
-        downloadedAt: Date.now(),
-      })
+      try {
+        await recordDownload({
+          document_id: documentId,
+          filename: filename || 'document',
+          export_type: 'scenario_report',
+          export_label: 'Scenario Simulation',
+        })
+      } catch { /* download already succeeded for the user */ }
     } catch {
       // silently ignore
     } finally {
       setDownloadingScenario(false)
     }
-  }, [documentId, report, downloadingScenario, addDownload, filename])
+  }, [documentId, report, downloadingScenario, filename])
 
   // ── Computed: clause lookup for triggered cards ──────────────────────────
 

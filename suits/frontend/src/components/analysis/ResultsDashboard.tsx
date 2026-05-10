@@ -17,8 +17,7 @@ import {
   Layers,
 } from 'lucide-react'
 import type { AnalysisResult } from '@/api/client'
-import { downloadReport } from '@/api/client'
-import { useUser } from '@/context/UserContext'
+import { downloadReport, recordDownload } from '@/api/client'
 import { cn } from '@/lib/utils'
 import { formatMs, riskColor, riskBg, riskLabel } from '@/lib/utils'
 import { easeOutExpo, staggerContainer, staggerItem } from '@/lib/motion'
@@ -75,7 +74,6 @@ function RiskScoreRing({ score }: { score: number }) {
 export default function ResultsDashboard({ result, filename, onOpenChat, onBack, onRunAllTools }: ResultsDashboardProps) {
   const [expandedClause, setExpandedClause] = useState<number | null>(null)
   const [downloading, setDownloading] = useState(false)
-  const { addDownload } = useUser()
 
   const advisory = result.advisory
   const overall = advisory?.overall_risk_assessment
@@ -117,14 +115,14 @@ export default function ResultsDashboard({ result, filename, onOpenChat, onBack,
       a.download = `${filename?.replace(/\.[^.]+$/, '') || 'report'}_negotiation_brief.pdf`
       a.click()
       URL.revokeObjectURL(url)
-      addDownload({
-        id: crypto.randomUUID(),
-        documentId: result.document_id,
-        filename: filename || 'document',
-        exportType: 'negotiation_brief',
-        exportLabel: 'Negotiation Brief',
-        downloadedAt: Date.now(),
-      })
+      try {
+        await recordDownload({
+          document_id: result.document_id,
+          filename: filename || 'document',
+          export_type: 'negotiation_brief',
+          export_label: 'Negotiation Brief',
+        })
+      } catch { /* download already succeeded for the user */ }
     } catch {
       // silent fail for MVP
     } finally {

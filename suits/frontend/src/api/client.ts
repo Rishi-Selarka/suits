@@ -387,6 +387,49 @@ export async function compareDocuments(
   return data
 }
 
+// ── Documents listing & download history ───────────────────────────────────
+
+export interface DocumentListItem {
+  document_id: string
+  filename: string
+  page_count: number
+  clause_count: number
+  status: 'uploaded' | 'processing' | 'complete' | 'error'
+  analyzed: boolean
+  uploaded_at: string
+}
+
+export async function listDocuments(): Promise<DocumentListItem[]> {
+  const { data } = await api.get<DocumentListItem[]>('/documents')
+  return data
+}
+
+export interface DownloadHistoryItem {
+  id: string
+  document_id: string
+  filename: string
+  export_type: string
+  export_label: string
+  created_at: string
+}
+
+export interface DownloadCreate {
+  document_id: string
+  filename?: string
+  export_type: string
+  export_label?: string
+}
+
+export async function listDownloads(): Promise<DownloadHistoryItem[]> {
+  const { data } = await api.get<DownloadHistoryItem[]>('/downloads')
+  return data
+}
+
+export async function recordDownload(payload: DownloadCreate): Promise<DownloadHistoryItem> {
+  const { data } = await api.post<DownloadHistoryItem>('/downloads', payload)
+  return data
+}
+
 export async function healthCheck(): Promise<Record<string, unknown>> {
   const { data } = await api.get('/health')
   return data

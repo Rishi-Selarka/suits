@@ -26,22 +26,6 @@ export interface ChatHistoryItem {
   messages?: ChatMessage[]
 }
 
-export interface DocumentItem {
-  id: string
-  filename: string
-  uploadedAt: number
-  analyzed: boolean
-}
-
-export interface DownloadItem {
-  id: string
-  documentId: string
-  filename: string
-  exportType: string
-  exportLabel: string
-  downloadedAt: number
-}
-
 type UserUpdater = Partial<UserData> | ((prev: UserData) => Partial<UserData>)
 
 interface UserContextType {
@@ -51,17 +35,26 @@ interface UserContextType {
   chatHistory: ChatHistoryItem[]
   addChat: (chat: ChatHistoryItem) => void
   removeChat: (id: string) => void
-  documents: DocumentItem[]
-  addDocument: (doc: DocumentItem) => void
-  downloads: DownloadItem[]
-  addDownload: (dl: DownloadItem) => void
 }
 
+// localStorage keys still in active use:
+//   STORAGE_KEY   — paint cache for {name, onboarded, avatar} so the UI doesn't
+//                   flash a loading state while /api/profile resolves on cold load.
+//   OWNER_KEY     — guards against the previous user's cache leaking when
+//                   another account signs in on the same browser.
+//   CHAT_HISTORY  — sidebar chat list. Still local-only; moving it server-side
+//                   is a separate effort because it's tangled with the live
+//                   SSE chat streaming flow.
+//
+// Removed keys (now server-backed via /api/documents and /api/downloads):
+//   - suits-documents
+//   - suits-downloads
 const STORAGE_KEY = 'suits-user'
 const CHAT_HISTORY_KEY = 'suits-chats'
-const DOCUMENTS_KEY = 'suits-documents'
-const DOWNLOADS_KEY = 'suits-downloads'
 const OWNER_KEY = 'suits-owner'
+// Stale keys cleaned up on mount so existing users don't carry forward megabytes
+// of dead localStorage from the pre-migration version of the app.
+const LEGACY_KEYS = ['suits-documents', 'suits-downloads'] as const
 
 const defaultUser: UserData = {
   name: '',
@@ -88,27 +81,10 @@ function loadChats(): ChatHistoryItem[] {
   return []
 }
 
-function loadDocuments(): DocumentItem[] {
-  try {
-    const stored = localStorage.getItem(DOCUMENTS_KEY)
-    if (stored) return JSON.parse(stored)
-  } catch { /* ignore */ }
-  return []
-}
-
-function loadDownloads(): DownloadItem[] {
-  try {
-    const stored = localStorage.getItem(DOWNLOADS_KEY)
-    if (stored) return JSON.parse(stored)
-  } catch { /* ignore */ }
-  return []
-}
-
 function clearLocalStorage() {
   localStorage.removeItem(STORAGE_KEY)
   localStorage.removeItem(CHAT_HISTORY_KEY)
-  localStorage.removeItem(DOCUMENTS_KEY)
-  localStorage.removeItem(DOWNLOADS_KEY)
+  for (const k of LEGACY_KEYS) localStorage.removeItem(k)
 }
 
 export function UserProvider({ children }: { children: ReactNode }) {
@@ -125,12 +101,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
     if (storedOwner !== ownerId) {
       localStorage.setItem(OWNER_KEY, ownerId)
     }
+    // Drop pre-migration keys for the current owner too — these used to hold
+    // documents/downloads as the source of truth and now just waste space.
+    for (const k of LEGACY_KEYS) localStorage.removeItem(k)
   }
 
   const [user, setUserState] = useState<UserData>(loadUser)
   const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>(loadChats)
-  const [documents, setDocuments] = useState<DocumentItem[]>(loadDocuments)
-  const [downloads, setDownloads] = useState<DownloadItem[]>(loadDownloads)
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
@@ -140,14 +117,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(chatHistory))
   }, [chatHistory])
 
-  useEffect(() => {
-    localStorage.setItem(DOCUMENTS_KEY, JSON.stringify(documents))
-  }, [documents])
-
-  useEffect(() => {
-    localStorage.setItem(DOWNLOADS_KEY, JSON.stringify(downloads))
-  }, [downloads])
-
   const setUser = (data: UserUpdater) => {
     setUserState(prev => ({ ...prev, ...(typeof data === 'function' ? data(prev) : data) }))
   }
@@ -155,8 +124,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const resetUser = () => {
     setUserState(defaultUser)
     setChatHistory([])
-    setDocuments([])
-    setDownloads([])
     clearLocalStorage()
     localStorage.removeItem(OWNER_KEY)
   }
@@ -184,25 +151,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     setChatHistory(prev => prev.filter(c => c.id !== id))
   }, [])
 
-  const addDocument = useCallback((doc: DocumentItem) => {
-    setDocuments(prev => {
-      const existing = prev.findIndex(d => d.id === doc.id)
-      if (existing >= 0) {
-        const updated = [...prev]
-        updated[existing] = doc
-        return updated
-      }
-      return [doc, ...prev]
-    })
-  }, [])
-
-  const addDownload = useCallback((dl: DownloadItem) => {
-    setDownloads(prev => [dl, ...prev].slice(0, 50))
-  }, [])
-
   const value = useMemo(() => ({
-    user, setUser, resetUser, chatHistory, addChat, removeChat, documents, addDocument, downloads, addDownload,
-  }), [user, setUser, resetUser, chatHistory, addChat, removeChat, documents, addDocument, downloads, addDownload])
+    user, setUser, resetUser, chatHistory, addChat, removeChat,
+  }), [user, setUser, resetUser, chatHistory, addChat, removeChat])
 
   return (
     <UserContext.Provider value={value}>

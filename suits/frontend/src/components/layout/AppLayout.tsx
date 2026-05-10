@@ -17,7 +17,6 @@ import DocumentsPage from '@/components/tools/DocumentsPage'
 import LibraryPage from '@/components/tools/LibraryPage'
 import DownloadsPage from '@/components/tools/DownloadsPage'
 import { useAnalysis } from '@/hooks/useAnalysis'
-import { useUser } from '@/context/UserContext'
 import { uploadDocument, getResults, type AnalysisResult } from '@/api/client'
 import { easeOutExpo } from '@/lib/motion'
 
@@ -37,10 +36,14 @@ export default function AppLayout() {
   const [mountedViews, setMountedViews] = useState<Set<string>>(new Set())
 
   const analysis = useAnalysis()
-  const { addDocument } = useUser()
   const analysisCompletedRef = useRef<string | null>(null)
 
   // ── Upload → Analyze → Results flow ──
+  //
+  // We no longer push the document into a local context list — the canonical
+  // documents list lives in Supabase (POST /api/upload creates the row, the
+  // status flips to 'complete' when analysis finishes), and DocumentsPage
+  // re-fetches on mount.
 
   const handleFileSelect = useCallback(async (file: File) => {
     setUploadError(null)
@@ -54,14 +57,11 @@ export default function AppLayout() {
       const docId = uploadRes.document_id
       setActiveDocumentId(docId)
 
-      addDocument({ id: docId, filename: file.name, uploadedAt: Date.now(), analyzed: false })
-
       // If server already has this analyzed (cached), jump to results
       if (uploadRes.status === 'cached') {
         try {
           const result = await getResults(docId)
           setCachedResult(result)
-          addDocument({ id: docId, filename: file.name, uploadedAt: Date.now(), analyzed: true })
           setActiveView('results')
           return
         } catch {
@@ -78,7 +78,7 @@ export default function AppLayout() {
       setUploadError(err instanceof Error ? err.message : 'Upload failed')
       setActiveView('chat')
     }
-  }, [analysis, addDocument])
+  }, [analysis])
 
   const currentResult = cachedResult || analysis.result
 
@@ -89,21 +89,15 @@ export default function AppLayout() {
       (analysis.pipelineStatus === 'complete' || analysis.pipelineStatus === 'cached') &&
       analysis.result
     ) {
-      // Guard against duplicate calls when addDocument identity changes
+      // Guard against duplicate transitions for the same document.
       const docId = analysis.result.document_id
       if (analysisCompletedRef.current === docId) return
       analysisCompletedRef.current = docId
 
       setCachedResult(analysis.result)
-      addDocument({
-        id: docId,
-        filename: activeFilename,
-        uploadedAt: Date.now(),
-        analyzed: true,
-      })
       setActiveView('results')
     }
-  }, [activeView, analysis.pipelineStatus, analysis.result, activeFilename, addDocument])
+  }, [activeView, analysis.pipelineStatus, analysis.result])
 
   const handleNewChat = useCallback(() => {
     setActiveChatId(crypto.randomUUID())

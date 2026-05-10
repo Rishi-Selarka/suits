@@ -18,8 +18,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
-import { useUser } from '@/context/UserContext'
-import { negotiateStream, uploadDocument, type NegotiateEvent } from '@/api/client'
+import { negotiateStream, recordDownload, uploadDocument, type NegotiateEvent } from '@/api/client'
 
 // ── Types ──
 
@@ -136,7 +135,6 @@ export default function NegotiatorPage() {
   const streamMsgIdRef = useRef<string | null>(null)
   const isSubmittingRef = useRef(false)
 
-  const { addDownload } = useUser()
   const isBusy = status === 'running' || status === 'concluding'
   const canSend = inputValue.trim().length > 0 && !isBusy
 
@@ -368,14 +366,17 @@ export default function NegotiatorPage() {
     a.click()
     document.body.removeChild(a)
     setTimeout(() => URL.revokeObjectURL(url), 1000)
-    addDownload({
-      id: crypto.randomUUID(),
-      documentId: documentId || 'negotiation',
-      filename: uploadedFilename || topic.slice(0, 40),
-      exportType: 'negotiation_transcript',
-      exportLabel: 'Negotiation Transcript',
-      downloadedAt: Date.now(),
-    })
+    // Negotiation transcripts aren't tied to an analysed document, so we
+    // only record the download when one is in scope. Otherwise the user
+    // gets the file without an audit-trail entry — acceptable.
+    if (documentId) {
+      void recordDownload({
+        document_id: documentId,
+        filename: uploadedFilename || topic.slice(0, 40),
+        export_type: 'negotiation_transcript',
+        export_label: 'Negotiation Transcript',
+      }).catch(() => { /* download already succeeded for the user */ })
+    }
   }
 
   // ── Split messages by agent ──

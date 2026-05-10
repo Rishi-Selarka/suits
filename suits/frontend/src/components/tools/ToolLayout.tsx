@@ -18,13 +18,13 @@ import {
 } from 'lucide-react'
 import { cn, validateUploadFile } from '@/lib/utils'
 import { easeOutExpo } from '@/lib/motion'
-import { useUser } from '@/context/UserContext'
 import {
   uploadDocument,
   analyzeDocumentSSE,
   getResults,
   chatWithDocumentStream,
   downloadReport,
+  recordDownload,
   type AnalysisResult,
   type SSEEvent,
   type ChatResponse,
@@ -90,7 +90,6 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
   const [agents, setAgents] = useState<Record<string, AgentProgress>>({})
   const [currentAgent, setCurrentAgent] = useState('')
   const [downloading, setDownloading] = useState(false)
-  const { addDownload } = useUser()
 
   // Chat state
   const [chatOpen, setChatOpen] = useState(false)
@@ -251,20 +250,25 @@ export default function ToolLayout({ title, description, icon: Icon, exportType,
       a.click()
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
-      addDownload({
-        id: crypto.randomUUID(),
-        documentId,
-        filename: filename || 'document',
-        exportType,
-        exportLabel: EXPORT_LABELS[exportType] || exportType,
-        downloadedAt: Date.now(),
-      })
+      // Best-effort: record on the server so the Downloads page can
+      // reconstruct the list on any device. A failure here doesn't block
+      // the user — they got their PDF.
+      try {
+        await recordDownload({
+          document_id: documentId,
+          filename: filename || 'document',
+          export_type: exportType,
+          export_label: EXPORT_LABELS[exportType] || exportType,
+        })
+      } catch {
+        /* silently ignore — download already succeeded for the user */
+      }
     } catch {
       // silently fail
     } finally {
       setDownloading(false)
     }
-  }, [documentId, exportType, downloading, addDownload, filename])
+  }, [documentId, exportType, downloading, filename])
 
   const handleExportChat = useCallback(() => {
     if (chatMessages.length === 0) return
