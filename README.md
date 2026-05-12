@@ -2,7 +2,7 @@
 
 > Multi-agent AI system that reads legal documents in seconds. Upload a contract — get clause-level risk scores, plain-English explanations, fair-market benchmark comparisons, and a verified negotiation playbook.
 
-Built for the **RNSIT Agentic AI Hackathon (Problem Statement 3)**.
+Built for the **RNSIT Agentic AI Hackathon (Problem Statement 3)**. India-focused: tuned for Indian contract law, Rent Control Acts, Shops & Establishments Act, and INR-denominated impact.
 
 ---
 
