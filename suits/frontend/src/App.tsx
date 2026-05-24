@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, Component, type ErrorInfo, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/context/AuthContext'
 import { UserProvider, useUser } from '@/context/UserContext'
 import Welcome from '@/pages/Welcome'
@@ -171,15 +172,17 @@ function AuthGate({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <AuthGate>
-          <UserProvider>
-            <AuthUserSync>
-              <AppRouter />
-            </AuthUserSync>
-          </UserProvider>
-        </AuthGate>
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AuthGate>
+            <UserProvider>
+              <AuthUserSync>
+                <AppRouter />
+              </AuthUserSync>
+            </UserProvider>
+          </AuthGate>
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   )
 }

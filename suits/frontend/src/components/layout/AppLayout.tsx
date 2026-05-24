@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import ChatInterface from '@/components/chat/ChatInterface'
 import PipelineProgress from '@/components/pipeline/PipelineProgress'
@@ -25,9 +26,51 @@ type AppView = 'chat' | 'uploading' | 'pipeline' | 'results' | 'settings' | 'run
 // Tool views that should stay mounted once visited (to preserve state)
 const PERSISTENT_TOOL_VIEWS = ['run-all-tools', 'risk-score', 'simulator', 'scenario-simulator', 'deadlines', 'timebomb', 'trap-detector', 'negotiator'] as const
 
+// Bidirectional view ↔ URL mapping. Views that represent transient flow state
+// (uploading, pipeline, results) intentionally stay off the URL — they reset
+// on reload, which matches how the app already treats them.
+const VIEW_TO_PATH: Record<AppView, string> = {
+  chat: '/chat',
+  uploading: '/chat',
+  pipeline: '/chat',
+  results: '/chat',
+  settings: '/settings',
+  'run-all-tools': '/audit',
+  'risk-score': '/risk-score',
+  simulator: '/what-could-go-wrong',
+  'scenario-simulator': '/scenario-simulator',
+  deadlines: '/deadlines',
+  timebomb: '/timebomb',
+  'trap-detector': '/trap-detector',
+  negotiator: '/negotiator',
+  documents: '/documents',
+  library: '/library',
+  downloads: '/downloads',
+}
+
+const PATH_TO_VIEW: Record<string, AppView> = {
+  '/': 'chat',
+  '/chat': 'chat',
+  '/settings': 'settings',
+  '/audit': 'run-all-tools',
+  '/risk-score': 'risk-score',
+  '/what-could-go-wrong': 'simulator',
+  '/scenario-simulator': 'scenario-simulator',
+  '/deadlines': 'deadlines',
+  '/timebomb': 'timebomb',
+  '/trap-detector': 'trap-detector',
+  '/negotiator': 'negotiator',
+  '/documents': 'documents',
+  '/library': 'library',
+  '/downloads': 'downloads',
+}
+
 export default function AppLayout() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const initialView = PATH_TO_VIEW[location.pathname] ?? 'chat'
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [activeView, setActiveView] = useState<AppView>('chat')
+  const [activeView, setActiveView] = useState<AppView>(initialView)
   const [activeChatId, setActiveChatId] = useState<string>(() => crypto.randomUUID())
   const [activeDocumentId, setActiveDocumentId] = useState<string | undefined>()
   const [activeFilename, setActiveFilename] = useState<string>('')
@@ -37,6 +80,24 @@ export default function AppLayout() {
 
   const analysis = useAnalysis()
   const analysisCompletedRef = useRef<string | null>(null)
+
+  // Keep the URL in sync with activeView so each page has a real, shareable
+  // path. Transient flow views (uploading, pipeline, results) all stay on
+  // /chat — they reset on reload anyway and don't deserve their own URL.
+  useEffect(() => {
+    const target = VIEW_TO_PATH[activeView]
+    if (target && location.pathname !== target) {
+      navigate(target, { replace: false })
+    }
+  }, [activeView, location.pathname, navigate])
+
+  // Back/forward buttons (or a typed URL) → bring activeView into line.
+  useEffect(() => {
+    const mapped = PATH_TO_VIEW[location.pathname]
+    if (mapped && mapped !== activeView) {
+      setActiveView(mapped)
+    }
+  }, [location.pathname, activeView])
 
   // ── Upload → Analyze → Results flow ──
   //
