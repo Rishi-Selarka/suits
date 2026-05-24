@@ -114,12 +114,14 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
   }, [chatHistory, chatId])
   const [isThinking, setIsThinking] = useState(false)
   const [streamingId, setStreamingId] = useState<string | null>(null)
+  const [attachedFile, setAttachedFile] = useState<File | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const tokenBufferRef = useRef('')
   const rafRef = useRef<number>(0)
   const streamMsgIdRef = useRef<string | null>(null)
   const messagesRef = useRef<Message[]>(messages)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   const isEmpty = messages.length === 0
   const isBusy = isThinking || streamingId !== null
@@ -175,6 +177,9 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
       tokenBufferRef.current = ''
       let firstTokenReceived = false
 
+      const controller = new AbortController()
+      abortControllerRef.current = controller
+
       const onToken = (token: string) => {
         // On first token, transition from thinking → streaming
         if (!firstTokenReceived) {
@@ -227,6 +232,10 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
       }
 
       const onError = (error: string) => {
+        // If the user clicked Stop, the stream catch path may surface an
+        // AbortError here — swallow it so we don't replace the partial
+        // assistant message with an error string.
+        if (controller.signal.aborted) return
         cancelAnimationFrame(rafRef.current)
         tokenBufferRef.current = ''
         streamMsgIdRef.current = null
@@ -252,16 +261,39 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
 
       try {
         if (documentId) {
-          await chatWithDocumentStream(documentId, content, onToken, onDone, onError, chatId)
+          await chatWithDocumentStream(documentId, content, onToken, onDone, onError, chatId, controller.signal)
         } else {
-          await generalChatStream(content, onToken, onDone, onError, chatId)
+          await generalChatStream(content, onToken, onDone, onError, chatId, controller.signal)
         }
-      } catch {
+      } catch (err) {
+        if (controller.signal.aborted || (err as Error)?.name === 'AbortError') return
         onError('Something went wrong. Please try again.')
+      } finally {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null
+        }
       }
     },
     [documentId, isBusy, flushTokens, addChat, chatId],
   )
+
+  const handleStopStreaming = useCallback(() => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    cancelAnimationFrame(rafRef.current)
+    // Preserve whatever was already streamed — just stop appending tokens.
+    const remaining = tokenBufferRef.current
+    const msgId = streamMsgIdRef.current
+    tokenBufferRef.current = ''
+    streamMsgIdRef.current = null
+    if (msgId && remaining) {
+      setMessages(prev =>
+        prev.map(m => (m.id === msgId ? { ...m, content: m.content + remaining } : m)),
+      )
+    }
+    setStreamingId(null)
+    setIsThinking(false)
+  }, [])
 
   const openFilePicker = () => fileInputRef.current?.click()
 
@@ -270,9 +302,18 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
     if (!file) return
     const err = validateUploadFile(file)
     if (err) { e.target.value = ''; return }
-    onFileSelect?.(file)
+    // Stage the file in the input instead of firing the upload+analyze
+    // pipeline immediately. The user confirms by clicking Send.
+    setAttachedFile(file)
     e.target.value = ''
   }
+
+  const handleAnalyzeAttachment = useCallback(() => {
+    if (!attachedFile) return
+    const file = attachedFile
+    setAttachedFile(null)
+    onFileSelect?.(file)
+  }, [attachedFile, onFileSelect])
 
   const handleQuickAction = (action: string) => {
     if (action === 'upload') {
@@ -418,7 +459,12 @@ export default function ChatInterface({ chatId, documentId, onFileSelect }: Chat
       <ChatInput
         onSend={handleSend}
         onUpload={openFilePicker}
+        onStop={handleStopStreaming}
+        attachedFile={attachedFile}
+        onRemoveAttachment={() => setAttachedFile(null)}
+        onAnalyzeAttachment={handleAnalyzeAttachment}
         disabled={isBusy}
+        isStreaming={!!streamingId || isThinking}
       />
     </div>
   )

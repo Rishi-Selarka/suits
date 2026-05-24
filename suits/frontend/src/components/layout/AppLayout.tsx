@@ -201,6 +201,10 @@ export default function AppLayout() {
             pipelineStatus={analysis.pipelineStatus}
             error={analysis.error || uploadError}
             filename={activeFilename}
+            onCancel={() => {
+              analysis.abort()
+              setActiveView('chat')
+            }}
           />
         )}
 

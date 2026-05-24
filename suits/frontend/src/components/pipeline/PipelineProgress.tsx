@@ -23,6 +23,7 @@ interface PipelineProgressProps {
   pipelineStatus: string
   error: string | null
   filename?: string
+  onCancel?: () => void
 }
 
 const AGENT_META: Record<string, { label: string; icon: typeof FileText; wave: number }> = {
@@ -56,6 +57,7 @@ export default function PipelineProgress({
   pipelineStatus,
   error,
   filename,
+  onCancel,
 }: PipelineProgressProps) {
   const completedCount = Object.values(agents).filter(a => a.status === 'complete').length
   const totalCount = agentOrder.length
@@ -189,6 +191,19 @@ export default function PipelineProgress({
           >
             {error}
           </motion.div>
+        )}
+
+        {onCancel && pipelineStatus === 'running' && (
+          <div className="mt-8 flex justify-center">
+            <motion.button
+              onClick={onCancel}
+              className="px-5 py-2 rounded-xl text-sm font-medium border border-cream-300 bg-white text-surface-300 hover:border-risk-high/40 hover:text-risk-high hover:bg-risk-high/5 transition-all duration-200"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              Cancel analysis
+            </motion.button>
+          </div>
         )}
       </motion.div>
     </div>
