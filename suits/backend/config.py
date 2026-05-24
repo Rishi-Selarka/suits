@@ -21,30 +21,74 @@ class ModelConfig(BaseModel):
 
 
 class AgentModelsConfig(BaseModel):
-    """Model configuration for each agent."""
+    """Per-agent model configuration (all via OpenRouter).
 
-    segmenter: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
-    classifier: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
-    simplifier: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
-    risk_analyzer: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
-    benchmark: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
-    advisor: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
-    verifier: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
-    rag_chat: ModelConfig = ModelConfig(model_id="anthropic/claude-sonnet-4-5")
-    general_chat: ModelConfig = ModelConfig(
-        model_id="openai/gpt-4o-mini", temperature=0.3
+    Defaults target xAI Grok for cost. Cheap fast tier (`x-ai/grok-4-fast`)
+    handles the bulk classification/extraction agents; quality-sensitive
+    synthesis agents use `x-ai/grok-4`. Each can be overridden via env vars
+    like `AGENT_MODELS__SIMPLIFIER__MODEL_ID=anthropic/claude-sonnet-4-5`.
+
+    See `docs/models_and_costs.md` for current OpenRouter pricing and the
+    rationale for each agent's tier.
+    """
+
+    # Fast / cheap tier — high volume, narrow task per clause.
+    segmenter: ModelConfig = ModelConfig(
+        model_id="x-ai/grok-4-fast",
+        fallback_model_id="anthropic/claude-sonnet-4-5",
     )
+    classifier: ModelConfig = ModelConfig(
+        model_id="x-ai/grok-4-fast",
+        fallback_model_id="anthropic/claude-sonnet-4-5",
+    )
+    simplifier: ModelConfig = ModelConfig(
+        model_id="x-ai/grok-4-fast",
+        fallback_model_id="anthropic/claude-sonnet-4-5",
+    )
+    benchmark: ModelConfig = ModelConfig(
+        model_id="x-ai/grok-4-fast",
+        fallback_model_id="anthropic/claude-sonnet-4-5",
+    )
+
+    # Quality tier — single-shot synthesis where errors compound downstream.
+    risk_analyzer: ModelConfig = ModelConfig(
+        model_id="x-ai/grok-4",
+        fallback_model_id="anthropic/claude-sonnet-4-5",
+    )
+    advisor: ModelConfig = ModelConfig(
+        model_id="x-ai/grok-4",
+        fallback_model_id="anthropic/claude-sonnet-4-5",
+    )
+    verifier: ModelConfig = ModelConfig(
+        model_id="x-ai/grok-4",
+        fallback_model_id="anthropic/claude-sonnet-4-5",
+    )
+
+    # Chat — fast tier; latency matters more than nuance here.
+    rag_chat: ModelConfig = ModelConfig(
+        model_id="x-ai/grok-4-fast",
+        fallback_model_id="anthropic/claude-sonnet-4-5",
+    )
+    general_chat: ModelConfig = ModelConfig(
+        model_id="x-ai/grok-4-fast", temperature=0.3,
+        fallback_model_id="openai/gpt-4o-mini",
+    )
+
+    # Negotiator — intentionally heterogeneous so the two sides have
+    # genuinely different "voices".
     negotiator_agent1: ModelConfig = ModelConfig(
-        model_id="google/gemini-2.0-flash-001", temperature=0.7, max_tokens=2048
+        model_id="x-ai/grok-4-fast", temperature=0.7, max_tokens=2048,
+        fallback_model_id="google/gemini-2.0-flash-001",
     )
     negotiator_agent2: ModelConfig = ModelConfig(
-        model_id="openai/gpt-4o-mini", temperature=0.7, max_tokens=2048
+        model_id="openai/gpt-4o-mini", temperature=0.7, max_tokens=2048,
     )
+
     scenario_simulator: ModelConfig = ModelConfig(
-        model_id="anthropic/claude-sonnet-4-5",
+        model_id="x-ai/grok-4",
         temperature=0.2,
         max_tokens=4096,
-        fallback_model_id="openai/gpt-4o-mini",
+        fallback_model_id="anthropic/claude-sonnet-4-5",
     )
 
 
