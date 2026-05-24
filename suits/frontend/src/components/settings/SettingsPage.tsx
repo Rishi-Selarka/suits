@@ -259,18 +259,23 @@ export default function SettingsPage({ onBack }: { onBack?: () => void }) {
           {/* ── Logout ── */}
           <div className="mt-10 pt-6 border-t border-cream-200">
             <p className="text-xs font-medium text-cream-400 uppercase tracking-wider mb-3">Account</p>
-            <p className="text-sm text-cream-400 mb-4">
-              Log out and return to the login page. Your local data will be cleared.
-            </p>
-            <motion.button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 hover:border-red-300 transition-all duration-200"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </motion.button>
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-cream-200 bg-white px-5 py-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-surface-200">Sign out</p>
+                <p className="text-xs text-cream-400 mt-0.5">
+                  Return to the login page. Your local cache will be cleared.
+                </p>
+              </div>
+              <motion.button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-cream-300 text-surface-300 bg-cream-100 hover:border-risk-high/40 hover:text-risk-high hover:bg-risk-high/5 transition-all duration-200 shrink-0"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </motion.button>
+            </div>
           </div>
         </motion.div>
       </div>
