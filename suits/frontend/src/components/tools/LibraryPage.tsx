@@ -3,21 +3,59 @@ import { BookOpen, ExternalLink, ArrowLeft } from 'lucide-react'
 import { staggerContainer, staggerItem } from '@/lib/motion'
 
 const RESOURCES = [
-  { category: 'Indian Contract Law', items: [
-    { title: 'Indian Contract Act, 1872', desc: 'Foundation of contract law in India', url: 'https://www.indiacode.nic.in/handle/123456789/2187' },
-    { title: 'Specific Relief Act, 1963', desc: 'Remedies for breach of contract', url: 'https://www.indiacode.nic.in/handle/123456789/1601' },
-    { title: 'Sale of Goods Act, 1930', desc: 'Commercial sale transactions', url: 'https://www.indiacode.nic.in/handle/123456789/2390' },
-    { title: 'Indian Stamp Act, 1899', desc: 'Stamp duty on legal documents', url: 'https://www.indiacode.nic.in/handle/123456789/2263' },
+  { category: 'Core Indian Contract Law', items: [
+    { title: 'Indian Contract Act, 1872', desc: 'Foundation of contract law — formation, consideration, performance, breach', url: 'https://www.indiacode.nic.in/handle/123456789/2187' },
+    { title: 'Specific Relief Act, 1963', desc: 'Equitable remedies and injunctive relief for breach of contract', url: 'https://www.indiacode.nic.in/handle/123456789/1601' },
+    { title: 'Sale of Goods Act, 1930', desc: 'Conditions, warranties, and risk transfer in commercial sales', url: 'https://www.indiacode.nic.in/handle/123456789/2390' },
+    { title: 'Indian Stamp Act, 1899', desc: 'State-wise stamp duty applicable to agreements and deeds', url: 'https://www.indiacode.nic.in/handle/123456789/2263' },
+    { title: 'Indian Registration Act, 1908', desc: 'Documents that must be registered to be legally enforceable', url: 'https://www.indiacode.nic.in/handle/123456789/2440' },
+    { title: 'Negotiable Instruments Act, 1881 (Sec 138)', desc: 'Liability for dishonoured cheques and recovery procedure', url: 'https://www.indiacode.nic.in/handle/123456789/2189' },
   ]},
-  { category: 'Employment & Tenancy', items: [
-    { title: 'Shops & Establishments Act', desc: 'State-level employment regulations', url: 'https://labour.gov.in/labour-law-reforms' },
-    { title: 'Rent Control Acts', desc: 'State-specific tenant protections', url: 'https://legislative.gov.in/model-tenancy-act-2021' },
-    { title: 'Industrial Disputes Act, 1947', desc: 'Labour dispute resolution', url: 'https://www.indiacode.nic.in/handle/123456789/1445' },
+  { category: 'Employment & Service Agreements', items: [
+    { title: 'Shops & Establishments Acts (state-wise)', desc: 'Working hours, leave, termination — state-level employment rules', url: 'https://labour.gov.in/labour-law-reforms' },
+    { title: 'Industrial Disputes Act, 1947', desc: 'Workman protections, retrenchment compensation, dispute machinery', url: 'https://www.indiacode.nic.in/handle/123456789/1445' },
+    { title: 'Payment of Gratuity Act, 1972', desc: 'Statutory gratuity entitlement after 5 years of continuous service', url: 'https://www.indiacode.nic.in/handle/123456789/1622' },
+    { title: 'Code on Wages, 2019', desc: 'Minimum wages, equal remuneration, payment timelines', url: 'https://labour.gov.in/sites/default/files/the_code_on_wages_2019_no._29_of_2019.pdf' },
+    { title: 'Code on Social Security, 2020', desc: 'EPF, ESI, maternity, and gig-worker social security', url: 'https://labour.gov.in/sites/default/files/SS_Code_Gazette.pdf' },
+    { title: 'Sexual Harassment of Women at Workplace Act, 2013 (POSH)', desc: 'Mandatory ICC and complaint redressal for every employer', url: 'https://www.indiacode.nic.in/handle/123456789/2104' },
   ]},
-  { category: 'Legal Principles', items: [
-    { title: 'Section 27: Restraint of Trade', desc: 'Non-compete clause enforceability', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30781&sectionno=27' },
-    { title: 'Section 73: Damages', desc: 'Compensation for breach of contract', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30827&sectionno=73' },
-    { title: 'Section 23: Unlawful Consideration', desc: 'Void agreements and public policy', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30777&sectionno=23' },
+  { category: 'Tenancy, Property & Real Estate', items: [
+    { title: 'Model Tenancy Act, 2021', desc: 'Centre-recommended framework for fair landlord–tenant relationships', url: 'https://mohua.gov.in/upload/uploadfiles/files/Model%20Tenancy%20Act%20English%2002_06_2021.pdf' },
+    { title: 'Transfer of Property Act, 1882', desc: 'Lease, mortgage, gift and sale of immovable property', url: 'https://www.indiacode.nic.in/handle/123456789/2338' },
+    { title: 'Real Estate (Regulation and Development) Act, 2016 (RERA)', desc: 'Buyer protections and developer obligations', url: 'https://www.indiacode.nic.in/handle/123456789/2249' },
+    { title: 'State Rent Control Acts', desc: 'State-specific limits on rent increases and eviction grounds', url: 'https://legislative.gov.in/' },
+  ]},
+  { category: 'Consumer & Data Protection', items: [
+    { title: 'Consumer Protection Act, 2019', desc: 'Unfair contract terms, e-commerce rules, product liability', url: 'https://consumeraffairs.nic.in/sites/default/files/CPA2019.pdf' },
+    { title: 'Digital Personal Data Protection Act, 2023 (DPDP)', desc: 'Consent, purpose limitation, and data principal rights', url: 'https://www.meity.gov.in/writereaddata/files/Digital%20Personal%20Data%20Protection%20Act%202023.pdf' },
+    { title: 'Information Technology Act, 2000', desc: 'Electronic signatures, intermediary liability, cybercrime', url: 'https://www.indiacode.nic.in/handle/123456789/1999' },
+  ]},
+  { category: 'Companies, Tax & Compliance', items: [
+    { title: 'Companies Act, 2013', desc: 'Corporate governance, director duties, related-party transactions', url: 'https://www.mca.gov.in/content/mca/global/en/acts-rules/ebooks/acts.html' },
+    { title: 'LLP Act, 2008', desc: 'Limited Liability Partnership formation and compliance', url: 'https://www.indiacode.nic.in/handle/123456789/2009' },
+    { title: 'CGST Act, 2017', desc: 'GST applicability on contractual supplies and indemnities', url: 'https://cbic-gst.gov.in/CGST-bill-e.html' },
+    { title: 'Income Tax Act, 1961', desc: 'TDS obligations on professional fees, rent, and contractor payments', url: 'https://incometaxindia.gov.in/Pages/acts/income-tax-act.aspx' },
+  ]},
+  { category: 'Dispute Resolution & Arbitration', items: [
+    { title: 'Arbitration and Conciliation Act, 1996', desc: 'Domestic and international arbitration, seat vs venue, enforcement', url: 'https://www.indiacode.nic.in/handle/123456789/1978' },
+    { title: 'Mediation Act, 2023', desc: 'Pre-litigation mediation framework introduced for civil/commercial disputes', url: 'https://prsindia.org/files/bills_acts/acts_parliament/2023/THE_MEDIATION_ACT_2023.pdf' },
+    { title: 'Commercial Courts Act, 2015', desc: 'Fast-track adjudication of high-value commercial disputes', url: 'https://www.indiacode.nic.in/handle/123456789/2143' },
+    { title: 'Code of Civil Procedure, 1908', desc: 'Procedure for civil suits, jurisdiction, and execution of decrees', url: 'https://www.indiacode.nic.in/handle/123456789/2191' },
+  ]},
+  { category: 'Frequently-Cited Sections', items: [
+    { title: 'Sec 23 — Unlawful Consideration', desc: 'Agreements opposed to public policy are void', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30777&sectionno=23' },
+    { title: 'Sec 27 — Restraint of Trade', desc: 'Non-compete during employment is enforceable; post-employment generally void', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30781&sectionno=27' },
+    { title: 'Sec 56 — Frustration / Impossibility', desc: 'Doctrine of supervening impossibility (force majeure)', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30810&sectionno=56' },
+    { title: 'Sec 73 — Damages for Breach', desc: 'Reasonable compensation, remoteness, and quantification of loss', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30827&sectionno=73' },
+    { title: 'Sec 74 — Liquidated Damages', desc: 'Pre-agreed compensation must be a genuine estimate, not a penalty', url: 'https://www.indiacode.nic.in/show-data?actid=AC_CEN_3_20_00035_187209_1523340333624&sectionId=30828&sectionno=74' },
+  ]},
+  { category: 'Trusted Portals & Free Legal Aid', items: [
+    { title: 'India Code — Official Statutes Database', desc: 'Government repository for all central and state acts', url: 'https://www.indiacode.nic.in/' },
+    { title: 'Supreme Court of India', desc: 'Official site for SC judgments, cause lists, and rules', url: 'https://main.sci.gov.in/' },
+    { title: 'eCourts Services', desc: 'Case status, orders, and cause lists for district & high courts', url: 'https://ecourts.gov.in/ecourts_home/' },
+    { title: 'NALSA — Free Legal Services', desc: 'Eligibility for free legal aid under the Legal Services Authorities Act', url: 'https://nalsa.gov.in/' },
+    { title: 'Bar Council of India', desc: 'Advocate verification and professional standards', url: 'https://www.barcouncilofindia.org/' },
+    { title: 'Ministry of Corporate Affairs (MCA)', desc: 'Company filings, master data, and DIN verification', url: 'https://www.mca.gov.in/' },
   ]},
 ]
 
