@@ -34,8 +34,8 @@ export default function SelectCard({
       className={cn(
         'relative flex flex-col items-center gap-3 p-6 rounded-2xl border transition-all duration-300 cursor-pointer text-center w-full',
         selected
-          ? 'bg-neutral-900 border-neutral-900 text-white'
-          : 'bg-white border-cream-300 hover:border-neutral-900 hover:bg-neutral-900/5',
+          ? 'bg-gradient-to-br from-surface-200 to-surface-100 border-suits-500/40 text-white shadow-[0_8px_28px_-12px_rgba(218,107,43,0.45)] ring-1 ring-suits-500/20'
+          : 'bg-white border-cream-300 hover:border-surface-300 hover:bg-cream-100/60 hover:shadow-sm',
       )}
     >
       {/* Selection check */}
@@ -45,8 +45,8 @@ export default function SelectCard({
         animate={{ scale: selected ? 1 : 0, opacity: selected ? 1 : 0 }}
         transition={{ type: 'spring', stiffness: 400, damping: 20 }}
       >
-        <div className="w-5 h-5 rounded-full bg-cream flex items-center justify-center">
-          <Check className="w-3 h-3 text-neutral-900" strokeWidth={3} />
+        <div className="w-5 h-5 rounded-full bg-suits-500 flex items-center justify-center shadow-sm shadow-suits-500/40">
+          <Check className="w-3 h-3 text-white" strokeWidth={3} />
         </div>
       </motion.div>
 
@@ -56,13 +56,15 @@ export default function SelectCard({
         <div
           className={cn(
             'w-11 h-11 rounded-xl flex items-center justify-center transition-colors duration-300',
-            selected ? 'bg-white/10' : 'bg-neutral-900/5',
+            selected
+              ? 'bg-suits-500/15 ring-1 ring-suits-500/30'
+              : 'bg-cream-100 group-hover:bg-cream-200',
           )}
         >
           <Icon
             className={cn(
               'w-5 h-5 transition-colors duration-300',
-              selected ? 'text-white' : 'text-neutral-700',
+              selected ? 'text-suits-300' : 'text-neutral-700',
             )}
           />
         </div>
@@ -82,7 +84,7 @@ export default function SelectCard({
           <p
             className={cn(
               'text-xs mt-1 transition-colors duration-300',
-              selected ? 'text-neutral-400' : 'text-neutral-500',
+              selected ? 'text-surface-700' : 'text-neutral-500',
             )}
           >
             {sublabel}
