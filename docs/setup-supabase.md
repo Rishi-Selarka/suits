@@ -70,6 +70,15 @@ Sidebar → **Authentication** → **URL Configuration**:
 - **Redirect URLs**: add `http://localhost:5173/**` (with wildcard) and your
   production origin. This is what OAuth and email-confirm links will redirect to.
 
+### Branded email templates (optional)
+
+Sidebar → **Authentication** → **Email Templates**. Paste each HTML file from
+`suits/supabase_email_templates/` into its matching slot (confirm signup, magic
+link, reset password, email change, invite, reauthentication) to swap the
+default Supabase emails for the Suits AI palette. See
+[`suits/supabase_email_templates/README.md`](../suits/supabase_email_templates/README.md)
+for the slot mapping and suggested subject lines.
+
 ---
 
 ## 5. Grab the keys

@@ -20,7 +20,8 @@ Upload any legal document (rental agreement, employment contract, NDA, freelance
 - **Scenario simulator** — predictive what-if engine: ask "what if I terminate after 6 months?", "what if rent is paid 30 days late?" and the simulator traces the hypothetical through your actual clauses, returning a step-by-step timeline, financial impact in INR, dispute probability, mitigation steps split into BEFORE / DURING / AFTER, and Indian-law citations
 - **Document comparison** — diff two versions of a contract clause-by-clause
 - **Negotiation simulator** — two AI agents role-play a redline conversation
-- **Interactive chat** — ask questions about your document (multi-turn, RAG-grounded)
+- **Interactive chat** — ask questions about your document (multi-turn, RAG-grounded). Attach a file as a removable chip and send it when you're ready; streaming answers and a running analysis can both be cancelled mid-flight
+- **Library & Sources** — a built-in reference shelf of the Indian statutes the agents reason against (Contract Act, Specific Relief Act, Model Tenancy Act, RERA, DPDP, arbitration & dispute-resolution laws, frequently-cited sections, and trusted government portals)
 - **Downloadable PDF** — professional negotiation brief, scenario simulation, or full bundle to share with your lawyer
 
 ---
@@ -78,7 +79,7 @@ The frontend lives at `Sidebar → Tools → Scenario Simulator`.
 | Layer | Technology |
 |---|---|
 | Backend API | FastAPI (Python 3.11+), async throughout |
-| LLM Provider | **OpenRouter** (OpenAI-compatible) — single client, any model |
+| LLM Provider | **OpenRouter** (OpenAI-compatible) — single client, any model. Defaults to **xAI Grok** (`grok-4-fast` for extraction, `grok-4` for synthesis) with a Claude Sonnet 4.5 fallback per agent |
 | Auth | Supabase Auth (asymmetric JWT verified via JWKS, with HS256 fallback) |
 | Database | Supabase Postgres (RLS-enforced) — local SQLite fallback for dev |
 | File Storage | Supabase Storage (per-user buckets, signed URLs) — local FS fallback for dev |
@@ -86,10 +87,10 @@ The frontend lives at `Sidebar → Tools → Scenario Simulator`.
 | RAG | sentence-transformers + ChromaDB (in-memory; opt-in via `ENABLE_RAG`) |
 | PDF Reports | fpdf2 |
 | Config | pydantic-settings + `.env` |
-| Frontend | React 18 + TypeScript + Vite + Supabase JS |
+| Frontend | React 18 + TypeScript + Vite + Supabase JS + React Router (every view has a real, shareable URL) |
 | Streaming | SSE (Server-Sent Events) for real-time agent progress |
 
-All LLM traffic is routed through OpenRouter — there is no direct Anthropic or OpenAI SDK call from the agents. Per-agent model selection is config-driven, so swapping `anthropic/claude-sonnet-4-5` for `openai/gpt-4o` or `google/gemini-2.0-flash` requires only an env var.
+All LLM traffic is routed through OpenRouter — there is no direct Anthropic or OpenAI SDK call from the agents. Per-agent model selection is config-driven, so swapping `x-ai/grok-4-fast` for `openai/gpt-4o`, `anthropic/claude-sonnet-4-5`, or `google/gemini-2.0-flash` requires only an env var. See [`docs/models_and_costs.md`](./docs/models_and_costs.md) for the per-agent defaults, rationale, and a worked cost-per-analysis estimate.
 
 ---
 
@@ -120,7 +121,8 @@ suits/
 │   ├── rag/                     # Hybrid search, embeddings, conversation memory
 │   ├── reports/                 # PDF report generation (negotiation brief)
 │   └── prompts/templates.py     # All agent prompts (centralized)
-├── frontend/                    # React + TypeScript + Vite
+├── frontend/                    # React + TypeScript + Vite (React Router; tool pages under src/components/tools/)
+├── supabase_email_templates/    # Suits-branded auth emails (confirm, magic link, reset, …)
 ├── sample_docs/                 # Demo documents
 └── data/                        # Local-dev uploads + cached results (gitignored)
 ```
@@ -177,6 +179,8 @@ Auth, persistent storage, and per-user quotas are gated behind Supabase. Without
 
 Full setup walk-through: [`docs/setup-supabase.md`](./docs/setup-supabase.md). It covers creating the project, applying `supabase_schema.sql`, configuring the `documents` storage bucket, enabling email + Google OAuth, and grabbing the four required keys.
 
+Branded auth emails (confirm signup, magic link, password reset, email change, invite, reauthentication) live in [`suits/supabase_email_templates/`](./suits/supabase_email_templates/) — paste each HTML file into the matching slot under **Authentication → Email Templates** in the Supabase dashboard.
+
 ### Environment Variables
 
 ```bash
@@ -198,11 +202,12 @@ CORS_ORIGINS=["http://localhost:3000","http://localhost:5173"]
 ENABLE_RAG=true
 
 # Per-agent model overrides (any OpenRouter-supported model)
-AGENT_MODELS__CLASSIFIER__MODEL_ID=anthropic/claude-sonnet-4-5
-AGENT_MODELS__RISK_ANALYZER__MODEL_ID=openai/gpt-4o
-AGENT_MODELS__RISK_ANALYZER__FALLBACK_MODEL_ID=anthropic/claude-3.5-sonnet
-AGENT_MODELS__ADVISOR__MODEL_ID=anthropic/claude-opus-4-5
-# ... see suits/.env.example for the full list
+# Defaults: x-ai/grok-4-fast for extraction agents, x-ai/grok-4 for synthesis,
+# each with an anthropic/claude-sonnet-4-5 fallback. Override only what you need:
+AGENT_MODELS__RISK_ANALYZER__MODEL_ID=anthropic/claude-sonnet-4-5
+AGENT_MODELS__RISK_ANALYZER__FALLBACK_MODEL_ID=openai/gpt-4o
+AGENT_MODELS__ADVISOR__MODEL_ID=anthropic/claude-sonnet-4-5
+# ... see docs/models_and_costs.md and suits/.env.example for the full list
 ```
 
 The frontend reads its own `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` from `suits/frontend/.env`.
@@ -237,7 +242,7 @@ The frontend reads its own `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` from `
 
 SSE event format:
 ```json
-{ "agent": "risk_analyzer", "status": "complete", "timing_ms": 3200, "model_used": "openai/gpt-4o" }
+{ "agent": "risk_analyzer", "status": "complete", "timing_ms": 3200, "model_used": "x-ai/grok-4" }
 ```
 
 All endpoints except `/api/health` require a Supabase JWT in `Authorization: Bearer <token>` when Supabase is configured. With Supabase unset, requests fall through to a development user ID.
@@ -246,7 +251,7 @@ All endpoints except `/api/health` require a Supabase JWT in `Authorization: Bea
 
 ## Key Design Decisions
 
-- **Single LLM transport, many models.** Routing every call through OpenRouter means each agent picks the model best suited to its task — fast/cheap for classification, strong reasoning for risk and advisor, language-heavy models for simplification — without juggling multiple SDKs.
+- **Single LLM transport, many models.** Routing every call through OpenRouter means each agent picks the model best suited to its task — fast/cheap for classification, strong reasoning for risk and advisor, language-heavy models for simplification — without juggling multiple SDKs. The defaults lean on xAI Grok (`grok-4-fast` for high-volume extraction, `grok-4` for synthesis) to keep cost-per-analysis at roughly $0.04–$0.10, with a Claude Sonnet 4.5 fallback wired in per agent so a Grok outage doesn't break the pipeline.
 - **Jurisdiction-aware.** Risk and Benchmark agents are calibrated for Indian legal context (Section 27 non-compete enforceability, 11-month lease structures, Rent Control Acts, Shops & Establishments Act).
 - **Fault-tolerant pipeline.** Classifier failure halts the run (downstream agents depend on its output); every other agent fails gracefully and the report is generated from whatever succeeded.
 - **Hallucination guard.** `BaseAgent` cross-checks every `clause_id` and number in agent output against the source before saving. The Verifier independently audits the Advisor's entire report.
