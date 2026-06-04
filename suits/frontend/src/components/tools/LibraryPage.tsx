@@ -1,5 +1,6 @@
+import { useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { BookOpen, ExternalLink, ArrowLeft } from 'lucide-react'
+import { BookOpen, ExternalLink, ArrowLeft, Search, X } from 'lucide-react'
 import { staggerContainer, staggerItem } from '@/lib/motion'
 
 const RESOURCES = [
@@ -60,6 +61,28 @@ const RESOURCES = [
 ]
 
 export default function LibraryPage({ onBack }: { onBack?: () => void }) {
+  const [query, setQuery] = useState('')
+
+  // Filter resources live by title, description, or category. Categories with
+  // no surviving items are dropped so the list collapses around matches.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return RESOURCES
+    return RESOURCES.map((section) => {
+      const categoryMatches = section.category.toLowerCase().includes(q)
+      const items = categoryMatches
+        ? section.items
+        : section.items.filter(
+            (item) =>
+              item.title.toLowerCase().includes(q) ||
+              item.desc.toLowerCase().includes(q),
+          )
+      return { ...section, items }
+    }).filter((section) => section.items.length > 0)
+  }, [query])
+
+  const resultCount = filtered.reduce((sum, section) => sum + section.items.length, 0)
+
   return (
     <div className="flex flex-col h-screen bg-cream overflow-hidden">
       {/* ── Header (matches ToolLayout) ── */}
@@ -88,8 +111,41 @@ export default function LibraryPage({ onBack }: { onBack?: () => void }) {
       {/* ── Content ── */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 py-8">
-          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8">
-            {RESOURCES.map((section) => (
+          {/* Search / filter */}
+          <div className="relative mb-6">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-cream-400 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search acts, sections, or topics…"
+              className="w-full bg-white border border-cream-200 rounded-xl pl-10 pr-10 py-2.5 text-sm text-surface-200 placeholder:text-cream-400 outline-none focus:border-suits-400 focus:shadow-sm transition-all"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-md text-cream-400 hover:text-surface-200 hover:bg-cream-100 transition-colors"
+                title="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {query.trim() && (
+            <p className="text-xs text-cream-400 mb-4">
+              {resultCount} {resultCount === 1 ? 'resource' : 'resources'} matching “{query.trim()}”
+            </p>
+          )}
+
+          {resultCount === 0 ? (
+            <div className="text-center py-16">
+              <p className="text-sm font-medium text-surface-200">No matching resources</p>
+              <p className="text-xs text-cream-400 mt-1">Try a different act, section, or keyword.</p>
+            </div>
+          ) : (
+          <motion.div key={query} variants={staggerContainer} initial="hidden" animate="visible" className="space-y-8">
+            {filtered.map((section) => (
               <motion.div key={section.category} variants={staggerItem}>
                 <p className="text-xs font-medium text-cream-400 uppercase tracking-wider mb-3">{section.category}</p>
                 <div className="space-y-2">
@@ -112,6 +168,7 @@ export default function LibraryPage({ onBack }: { onBack?: () => void }) {
               </motion.div>
             ))}
           </motion.div>
+          )}
         </div>
       </div>
     </div>
