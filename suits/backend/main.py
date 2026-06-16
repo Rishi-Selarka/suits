@@ -951,12 +951,15 @@ async def document_chat_stream(
                     memory.add_message(memory_key, "user", body.message)
                     memory.add_message(memory_key, "assistant", collected)
 
-                # Build source references from the clauses used as context
+                # Build source references from the clauses used as context.
+                # Clause dicts use `page_number` (see Clause model); fall back to
+                # `page` only for chunk-shaped dicts. Reading `page` alone here
+                # always yielded 1, so every citation showed "p.1".
                 source_clauses = [
                     {
                         "clause_id": c.get("clause_id", 0),
                         "title": c.get("title", "Untitled"),
-                        "page": c.get("page", 1),
+                        "page": c.get("page_number", c.get("page", 1)),
                     }
                     for c in clauses_raw[:15]
                     if c.get("clause_id")
